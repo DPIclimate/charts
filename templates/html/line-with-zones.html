@@ -1,0 +1,141 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Line Chart</title>
+		<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.0/dist/echarts.min.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+		<link rel="stylesheet" href="../css/line.css"></script>
+	</head>
+
+	<body>
+		<div id="chart" class="chart"></div>
+		<script type="text/javascript">// Token and device setup
+			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
+			const DEVICE_NAME = "70b3d57ed00436bb";
+			const VARIABLE_NAME = "moisture5";
+
+			// Time range and attributes
+			const UNIX_START_TIME = 1631748755 * 1000; // Convert to milliseconds
+			const UNIX_END_TIME = 1632440109 * 1000; 
+			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
+			const RETURN_TYPE = "json";
+			
+			function getValues(callback) {
+				const url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
+								DEVICE_NAME + "/" + VARIABLE_NAME + "/values/?start=" +
+								UNIX_START_TIME + "&end=" + UNIX_END_TIME +
+								"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
+
+				const headers = {
+					"X-Auth-Token": READ_ONLY_TOKEN, 
+					"Content-Type": "applications/json"
+				};
+
+				$.ajax({
+					url: url, 
+					method: "GET",
+					headers: headers,
+					success: function (res) {
+						callback(res.results)
+					}
+				});
+
+			}
+
+			getValues(function (values) {
+				var series = new Array();
+				const data = values.map(function (value, index) {
+					var date = new Date(value.timestamp);
+					date = date.toLocaleString("en-AU");
+					series.push([date, value.value]);
+				})
+
+				var chartDom = document.getElementById('chart');
+				var chart = echarts.init(chartDom);
+				var options = {
+					tooltip: {
+						trigger: 'axis',
+						axisPointer: {
+							type: 'cross'
+						}
+					},
+					toolbox: {
+						show: true,
+						feature: {
+							saveAsImage: {}
+						}
+					},
+					xAxis: {
+						label: "Date",
+						type: 'category'
+					},
+					yAxis: {
+						type: 'value'
+					},
+					series: [{
+						type: 'line',
+						data: series.reverse(), // Reverse array as last value comes first
+						markArea: {
+							data: [
+								[{
+									name: "Very Dry",
+									itemStyle: {
+										color: 'rgba(255, 173, 177, 0.4)'
+									},
+									yAxis: 0
+								},
+								{
+									yAxis: 20
+								}],
+								[{
+									name: "Dry",
+									itemStyle: {
+										color: "rgba(255, 173, 145, 0.4)"
+									},
+									yAxis: 20
+								},
+								{
+									yAxis: 30
+								}],
+								[{
+									name: "Optimal",
+									itemStyle: {
+										color: "rgba(189, 227, 167, 0.4)"
+									},
+									yAxis: 30
+								},
+								{
+									yAxis: 50
+								}],
+								[{
+									name: "Wet",
+									itemStyle: {
+										color: "rgba(189, 227, 222, 0.4)"
+									},
+									yAxis: 50
+								},
+								{
+									yAxis: 70
+								}],
+								[{
+									name: "Very Wet",
+									itemStyle: {
+										color: "rgba(144, 227, 255, 0.4)"
+									},
+									yAxis: 70
+								},
+								{
+									yAxis: 100
+								}]
+							]
+						}
+					}]
+				};
+
+				options && chart.setOption(options);
+			});
+
+
+		</script>
+	</body>
+</html>
