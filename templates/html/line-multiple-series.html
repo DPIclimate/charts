@@ -8,63 +8,54 @@
 
 	<body>
 		<div id="chart" class="chart"></div>
-		<script type="text/javascript">// Token and device setup
+		<script type="text/javascript">
+
+			// Begin setup
 			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
 			const DEVICE_NAME = "stoneleigh-sm-kanzi-block";
-			const VARIABLE_NAME = "av-10cm";
-			const SECOND_VARIABLE_NAME = "av-20cm";
-
-			// Time range and attributes
+			const VARIABLES = ["av-10cm", "av-20cm"];
 			const UNIX_START_TIME = 1631748755 * 1000; // Convert to milliseconds
 			const UNIX_END_TIME = 1632440109 * 1000; 
+			// Optional
 			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
 			const RETURN_TYPE = "json";
+			// End setup
 
-			const urlOne = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
-						DEVICE_NAME + "/" + VARIABLE_NAME + "/values/?start=" +
-						UNIX_START_TIME + "&end=" + UNIX_END_TIME +
-						"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
-
-			const urlTwo = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
-						DEVICE_NAME + "/" + SECOND_VARIABLE_NAME + "/values/?start=" +
-						UNIX_START_TIME + "&end=" + UNIX_END_TIME +
-						"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
-
+			const urls = VARIABLES.map(function(_, i) {
+				var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
+							DEVICE_NAME + "/" + VARIABLES[i] + "/values/?start=" +
+							UNIX_START_TIME + "&end=" + UNIX_END_TIME +
+							"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
+				return url;
+			});
 
 			async function renderChart() {
+				// TODO add error handling here
+				try {
+					const request = Array.from(Array(urls.length)).map(async function(_, i) {
+						const req = await fetch(urls[i], {
+							method: "GET",
+							headers: {"X-Auth-Token": READ_ONLY_TOKEN}
+						});
+						return req.json();
+					});
 
-				const [responseOne, responseTwo] = await Promise.all([
-					fetch(urlOne, {
-						method: "GET",
-						headers: {"X-Auth-Token": READ_ONLY_TOKEN}
-					}), 
-					fetch(urlTwo, {
-						method: "GET",
-						headers: {"X-Auth-Token": READ_ONLY_TOKEN}
-					})
-					]);
-					
-					const one = await responseOne.json();
-					const two = await responseTwo.json();
+					const response = await Promise.all(request);
+					return response;
+				} catch (error) {
+					console.log(error);
+				}
 
-					return [one, two]
 			}
 
-			renderChart().then(([one, two]) => {
-
-				var seriesOne = new Array();
-				var seriesTwo = new Array();
-
-				one.results.map(function (value, index) {
-					var date = new Date(value.timestamp);
-					date = date.toLocaleString("en-AU");
-					seriesOne.push([date, value.value]);
-				});
-
-				two.results.map(function (value, index) {
-					var date = new Date(value.timestamp);
-					date = date.toLocaleString("en-AU");
-					seriesTwo.push([date, value.value]);
+			renderChart().then((response) => {
+				// TODO needs better error handling
+				var series = response.map(function(_, i) {
+					var data = response[i].results.map(function (value, index) {
+						var date = new Date(value.timestamp).toLocaleString("en-AU");
+						return [date, value.value];
+					});
+					return data;
 				});
 
 				var chartDom = document.getElementById('chart');
@@ -87,18 +78,47 @@
 						type: 'category'
 					},
 					yAxis: {
-						type: 'value'
+						label: "VWC (%)",
+						type: 'value',
+						min: 0,
+						max: 100
 					},
-					series: [{
-						name: "10 cm",
+					series: [
+					{
+						name: VARIABLES[0],
 						type: 'line',
-						data: seriesOne.reverse() // Reverse array as last value comes first
+						data: series[0].reverse(), // Reverse array as last value comes first
+						markLine: {
+							label: {
+								formatter: "Wilting Point",
+								position: "insideEndTop"
+							},
+							lineStyle: {
+								color: '#333'
+							},
+							data: [{
+								yAxis: 23
+							}]
+						}
 					},
-					{	
-						name: "20 cm",
+					{
+						name: VARIABLES[1],
 						type: 'line',
-						data: seriesTwo // Reverse array as last value comes first
-					}]
+						data: series[1], 
+						markLine: {
+							label: {
+								formatter: "Field Capacity",
+								position: "insideEndTop"
+							},
+							lineStyle: {
+								color: '#333'
+							},
+							data: [{
+								yAxis: 72
+							}]
+						}
+					}
+					],
 				};
 
 				options && chart.setOption(options);
