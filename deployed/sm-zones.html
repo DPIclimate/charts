@@ -3,35 +3,75 @@
 	<head>
 		<title>Line Chart</title>
 		<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.0/dist/echarts.min.js"></script>
-		<link rel="stylesheet" href="../templates/css/line.css"></script>
+		<link rel="stylesheet" href="sm-zones.css"></script>
+		<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+		<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
 	</head>
 
 	<body>
-		<div id="chart" class="chart"></div>
+		<div class="main">
+			<div class="daterange">
+				<i class="fa fa-calendar"></i>&nbsp;
+				<input class="dateinput" type="text" name="daterange"/>
+			</div>&nbsp;
+			<div id="chart" class="chart"></div>
+		</div>
 		<script type="text/javascript">
 
 			// Begin setup
 			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
 			const DEVICE_NAME = "stoneleigh-sm-kanzi-block";
 			const VARIABLES = ["av-20cm", "av-40cm", "av-60cm"];
-			const UNIX_START_TIME = Date.now() - (604800000*2); // Two weeks ago
-			const UNIX_END_TIME = Date.now();
 			// Optional
 			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
 			const RETURN_TYPE = "json";
 			// End setup
 
-			const urls = VARIABLES.map(function(_, i) {
-				var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
-							DEVICE_NAME + "/" + VARIABLES[i] + "/values/?start=" +
-							UNIX_START_TIME + "&end=" + UNIX_END_TIME +
-							"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
-				return url;
-			});
+			function initDate() {
+				// Default 7 day view
+				var startDate = moment().subtract(7, 'days');
+				var endDate = moment();
+				$('input[name="daterange"]').daterangepicker({
+					timePicker: true,
+					opens: 'left',
+					startDate: startDate,
+					endDate: endDate,
+					locale: {
+						format: "MM/DD hh:mm A"
+					}
+				}, function updateChart(start, end, label) {
+					var date = {
+						start: start.valueOf(),
+						end: end.valueOf()
+					};
+					getData(date).then((response) => {
+						renderChart(response);
+					});
+				});
+				return {
+					start: startDate.valueOf(),
+					end: endDate.valueOf()
+				};
+			};
 
-			async function renderChart() {
+			var date = initDate();
+
+			async function getData(date) {
 				// TODO add error handling here
 				try {
+					const urls = VARIABLES.map(function(_, i) {
+						var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
+									DEVICE_NAME + "/" + VARIABLES[i] + "/values/?start=" +
+									date.start + "&end=" + date.end +
+									"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
+						return url;
+					});
 					const request = Array.from(Array(urls.length)).map(async function(_, i) {
 						const req = await fetch(urls[i], {
 							method: "GET",
@@ -47,12 +87,11 @@
 				}
 
 			}
-
-			renderChart().then((response) => {
+			function renderChart(response){
 				// TODO needs better error handling
 				var series = response.map(function(_, i) {
 					var data = response[i].results.map(function (value, index) {
-						var date = new Date(value.timestamp).toLocaleString("en-AU");
+						var date = new Date(value.timestamp);
 						return [date, value.value];
 					});
 					return data;
@@ -75,20 +114,18 @@
 							restore: {}
 						}
 					},
-					dataZoom: [
-						{
-						  show: true,
-						  realtime: true,
-						  start: 0,
-						  end: 100,
-						}
-					  ],
 					legend: {
 						show: true,
 					},
+					dataZoom: [
+						{
+							type: 'inside',
+							throttle: 50
+						}
+					],
 					xAxis: {
 						label: "Date",
-						type: 'category',
+						type: 'time',
 						splitArea: {
 							show: true
 						}
@@ -193,6 +230,10 @@
 				};
 
 				options && chart.setOption(options);
+			}
+
+			getData(date).then((response) => {
+				renderChart(response);
 			});
 		</script>
 	</body>
