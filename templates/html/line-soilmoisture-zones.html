@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.0/dist/echarts.min.js"></script>
-		<link rel="stylesheet" href="sm-zones.css"></script>
+		<link rel="stylesheet" href="../css/line-soilmoisture-zones.css"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
@@ -98,6 +98,11 @@
 				};
 
 				var options = {
+					title: {
+						text: 'Kanzi Block',
+						subtext: 'Average',
+						left: 50,
+					},
 					tooltip: {
 						trigger: 'axis',
 						axisPointer: {
@@ -105,6 +110,7 @@
 						}
 					},
 					toolbox: {
+						right: 50,
 						show: true,
 						feature: {
 							saveAsImage: {},
@@ -113,120 +119,100 @@
 						}
 					},
 					legend: {
+						top: 30,
 						show: true,
 					},
 					dataZoom: [
 						{
 							type: 'inside',
-							throttle: 50
+							yAxisIndex: [0],
+							startValue: 10,
+							endValue: 60,
 						}
 					],
 					xAxis: {
-						label: "Date",
+						name: "Date (M)",
+						nameLocation: 'center',
+						nameGap: 25,
 						type: 'time',
 						splitArea: {
 							show: true
 						}
 					},
 					yAxis: {
-						label: "VWC (%)",
-						type: 'value',
+						name: "Voumetric water content (%)",
+						nameLocation: 'center',
+						nameGap: 25,
 						min: 0,
-						max: 100
+						max: 100,
+						type: 'value',
 					},
 					series: [
-					{
-						name: "Field Capacity",
-						type: 'line',
-						data: [],
-						markLine: {
-							label: {
-								formatter: "Field Capacity",
-								position: "insideEndBottom"
-							},
-							lineStyle: {
-								width: 2,
-								color: 'rgba(70, 70, 255, 1)'
-							},
-							data: [{
-								yAxis: 72
-							}]
+						{
+							name: "20 cm",
+							type: 'line',
+							data: series[0].reverse(), // Reverse array as last value comes first
 						},
-						markArea: {
-							label: {
-								show: true,
-								position: 'inside',
-								color: '#000'
-							},
-							data:[
-								[{
-									name: "Very wet",
-									itemStyle: {
-										color: 'rgba(55, 143, 255, 0.4)'
-									},
-									yAxis: 72
-								},
-								{
-									yAxis: 100
-								}]
-							]
-						}
-					},
-					{
-						name: "Wilting Point",
-						type: 'line',
-						data: [],
-						markLine: {
-							label: {
-								formatter: "Wilting Point",
-								position: "insideEndTop"
-							},
-							lineStyle: {
-								width: 2,
-								color: 'rgba(255, 70, 95, 1)'
-							},
-							data: [{
-								yAxis: 23
-							}]
+						{
+							name: "40 cm",
+							type: 'line',
+							data: series[1], 
 						},
-						markArea: {
-							label: {
-								show: true,
-								position: 'inside',
-								color: '#000'
-							},
-							data:[
-								[{
-									name: "Very dry",
-									itemStyle: {
-										color: 'rgba(255, 173, 177, 0.4)'
+						{
+							name: "60 cm",
+							type: 'line',
+							data: series[2], // Reverse array as last value comes first
+						},
+						{
+							name: "Zones",
+							type: 'line',
+							data: [],
+							markLine: {
+								data: 
+									[{
+										label: {
+											position: 'insideEndBottom',
+											formatter: "Field Capacity",
+										},
+										itemStyle: {
+											color: 'rgba(0, 0, 0, 1)'
+										},
+										yAxis: 39 
 									},
-									yAxis: 0
+									{
+										label: {
+											position: 'insideEndTop',
+											formatter: "Wilting Point",
+										},
+										itemStyle: {
+											color: 'rgba(0, 0, 0, 1)'
+										},
+										yAxis: 22
+									},
+								],
+							},
+							markArea: {
+								label: {
+									show: true,
+									position: 'inside',
+									color: '#000'
 								},
-								{
-									yAxis: 23
-								}],
-							]
+								data: [
+									[{
+										name: "Optimal Zone",
+										itemStyle: {
+											color: 'rgba(80, 255, 120, 0.2)'
+										},
+										yAxis: 22,
+										},
+										{
+											yAxis: 39,
+										}],
+								]
+							}
 						}
-					},
-					{
-						name: VARIABLES[0],
-						type: 'line',
-						data: series[0].reverse(), // Reverse array as last value comes first
-					},
-					{
-						name: VARIABLES[1],
-						type: 'line',
-						data: series[1], 
-					},
-					{
-						name: VARIABLES[2],
-						type: 'line',
-						data: series[2], // Reverse array as last value comes first
-					},
-					],
+					]
 				};
-
 				options && chart.setOption(options);
 			}
 
