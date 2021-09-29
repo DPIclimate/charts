@@ -1,27 +1,19 @@
 <!DOCTYPE HTML>
 <html>
 	<head>
-		<title>Line Chart</title>
 		<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.0/dist/echarts.min.js"></script>
 		<link rel="stylesheet" href="sm-zones.css"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
 	</head>
 
 	<body>
-		<div class="main">
-			<div class="daterange">
-				<i class="fa fa-calendar"></i>&nbsp;
-				<input class="dateinput" type="text" name="daterange"/>
-			</div>&nbsp;
-			<div id="chart" class="chart"></div>
-		</div>
+		<div class="daterange">
+			&#128198;&nbsp;&nbsp;<input class="dateinput" type="text" name="daterange"/>
+		</div>&nbsp;
+		<div id="chart" class="chart"></div>
 		<script type="text/javascript">
 
 			// Begin setup
@@ -99,6 +91,12 @@
 
 				var chartDom = document.getElementById('chart');
 				var chart = echarts.init(chartDom);
+				
+				// Resize chart with window size
+				window.onresize = function() {
+					chart.resize();
+				};
+
 				var options = {
 					tooltip: {
 						trigger: 'axis',
