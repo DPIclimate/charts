@@ -1,0 +1,95 @@
+<!--
+This is a single-file template that can be used to develop and test ubidots HTML canvas widgets.
+
+There is a section for each of the HTML canvas widget settings or tabs.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!-- Copy these URLs into the external library section. -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- End of the external library section. -->
+<style>
+/*** Copy this into the CSS section. ***/
+.lvl {
+    padding-left: 2em;
+    text-align: right;
+}
+
+.lvlOk {
+    color: green;
+}
+
+.lvlLow {
+    color: red;
+}
+/*** End of the CSS section. ***/
+</style>
+<script>
+$(document).ready(() => {
+/*** Copy this into the JavaScript section. NOT THE LINE ABOVE. ***/
+    const BASE_URL = "https://industrial.api.ubidots.com/api/v2.0";
+    const HEADERS = { "X-Auth-Token": "BBAU-xxxx" };
+
+    var devices = [];
+    var variableCount = 0;
+
+    function afterVariable() {
+        variableCount++;
+        if (variableCount >= devices.length) {
+            var str = "";
+
+            devices.sort((a, b) => (a.depth.lastValue.value > b.depth.lastValue.value) ? 1 : -1)
+
+            for (let d of devices) {
+                var val = d.depth.lastValue.value;
+                var valStyle = "lvlOk";
+                if (val < 10) {
+                    valStyle = "lvlLow";
+                }
+
+                str = `${str}<tr><td><a href="${d.url}">${d.description}</a></td><td class="lvl ${valStyle}">${val} ${d.depth.unit}</td></tr>\n`;
+            }
+
+            $("#ttbody").append(str);
+        }
+    }
+
+    $.ajax({
+        dataType: "json",
+        url: BASE_URL + "/devices/",
+        data: { "organization__label__iexact": "centreplus", "deviceGroup__name__iexact": "trough" },
+        headers: HEADERS,
+    })
+    .done(function(data) {
+        for (let d of data.results) {
+            devices.push(d);
+
+            $.ajax({
+                dataType: "json",
+                url: BASE_URL + "/devices/" + d.id + "/variables/~depth",
+                headers: HEADERS,
+            })
+            .done(function (data) {
+                d.depth = data;
+            })
+            .always(afterVariable);
+        }
+    });
+/*** End of the JavaScript section. NOT THE LINE BELOW. ***/
+});
+</script>
+</head>
+<body>
+<!-- Copy this into the HTML section. -->
+<table>
+    <thead>
+        <tr><th style="text-align: left">Trough</th><th style="text-align: right">Depth</th></tr>
+    </thead>
+    <tbody id="ttbody">
+    </tbody>
+</table>
+<!-- End of the HTML section. -->
+</body>
+</html>
