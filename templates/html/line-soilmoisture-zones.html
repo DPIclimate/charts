@@ -7,13 +7,16 @@
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	</head>
 
 	<body>
 		<div class="daterange">
 			&#128198;&nbsp;&nbsp;<input class="dateinput" type="text" name="daterange"/>
 		</div>&nbsp;
-		<div id="chart" class="chart"></div>
+		<div id="chart" class="chart">
+			<h1 style="position: absolute; left: 50%; top: 50%; text-align: center;"><i class="fa fa-spinner fa-spin"></i></h1>
+		</div>
 		<script type="text/javascript">
 
 			// Begin setup
