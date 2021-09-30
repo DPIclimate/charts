@@ -19,7 +19,8 @@
 			// Begin setup
 			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
 			const DEVICE_NAME = "stoneleigh-sm-kanzi-block";
-			const VARIABLES = ["av-20cm", "av-40cm", "av-60cm"];
+			const VARIABLES = ["av-10cm", "av-20cm", "av-30cm",	"av-40cm", 
+							"av-50cm", "av-60cm", "av-70cm", "av-80cm"];
 			// Optional
 			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
 			const RETURN_TYPE = "json";
@@ -119,15 +120,22 @@
 						}
 					},
 					legend: {
-						top: 30,
+						bottom: 70,
+						width: 400,
 						show: true,
+						icon: 'rect',
+						selected: {
+							"10 cm": false,
+							"70 cm": false,
+							"80 cm": false,
+						}
 					},
 					dataZoom: [
 						{
 							type: 'inside',
 							yAxisIndex: [0],
 							startValue: 10,
-							endValue: 60,
+							endValue: 70,
 						}
 					],
 					xAxis: {
@@ -149,22 +157,48 @@
 					},
 					series: [
 						{
-							name: "20 cm",
+							name: "10 cm",
 							type: 'line',
 							data: series[0].reverse(), // Reverse array as last value comes first
 						},
 						{
-							name: "40 cm",
+							name: "20 cm",
 							type: 'line',
-							data: series[1], 
+							data: series[1], // Reverse array as last value comes first
 						},
 						{
-							name: "60 cm",
+							name: "30 cm",
 							type: 'line',
 							data: series[2], // Reverse array as last value comes first
 						},
 						{
+							name: "40 cm",
+							type: 'line',
+							data: series[3], 
+						},
+						{
+							name: "50 cm",
+							type: 'line',
+							data: series[4], // Reverse array as last value comes first
+						},
+						{
+							name: "60 cm",
+							type: 'line',
+							data: series[5], // Reverse array as last value comes first
+						},
+						{
+							name: "70 cm",
+							type: 'line',
+							data: series[6], // Reverse array as last value comes first
+						},
+						{
+							name: "80 cm",
+							type: 'line',
+							data: series[7], // Reverse array as last value comes first
+						},
+						{
 							name: "Zones",
+							color: 'rgba(80, 255, 120, 0.4)',
 							type: 'line',
 							data: [],
 							markLine: {
@@ -199,7 +233,7 @@
 								},
 								data: [
 									[{
-										name: "Optimal Zone",
+										name: "Available water",
 										itemStyle: {
 											color: 'rgba(80, 255, 120, 0.2)'
 										},
