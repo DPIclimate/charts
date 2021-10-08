@@ -1,0 +1,157 @@
+<!--
+This is a single-file template that can be used to develop and test ubidots HTML canvas widgets.
+
+There is a section for each of the HTML canvas widget settings or tabs.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!-- Copy these URLs into the external library section. -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<!-- End of the external library section. -->
+<style>
+/*** Copy this into the CSS section. ***/
+#tbldiv {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    height: 98vh;
+	width: 98vw;
+	top: 0;
+	left: 0;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+th {
+    line-height: 21px;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid rgb(190, 190, 190);
+}
+
+td {
+    padding-top: 0.5em;
+    line-height: 21px;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid rgb(190, 190, 190);
+}
+
+a {
+    font-size: 14px;
+}
+
+a:link { text-decoration: none; }
+a:visited { text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:active { text-decoration: underline; }
+
+
+.lvl {
+    padding-left: 2em;
+    text-align: right;
+}
+
+.lvlOk {
+    color: green;
+}
+
+.lvlLow {
+    color: red;
+}
+/*** End of the CSS section. ***/
+</style>
+<script>
+$(document).ready(() => {
+/*** Copy this into the JavaScript section. NOT THE LINE ABOVE. ***/
+    const API_URL = "https://industrial.api.ubidots.com/api/v2.0";
+    const PAGE_BASE_URL = new URL(window.location.href).origin;
+    const HEADERS = { "X-Auth-Token": "BBAU-VOMMw42nHGcLPKVfBMQxYXDUiL78ln" };
+
+    var devices = [];
+    var devsWithDepth = [];
+
+    var variableCount = 0;
+
+    function buildTable(devArray) {
+        devArray.sort((a, b) => (a.depth.lastValue.value > b.depth.lastValue.value) ? 1 : -1)
+
+        var str = "";
+
+        for (let d of devArray) {
+            var val = Math.round(d.depth.lastValue.value);
+            var valStyle = "lvlOk";
+            if (val < 10) {
+                valStyle = "lvlLow";
+            }
+
+            var devUrl = PAGE_BASE_URL + "/app/devices/" + d.id;
+
+            str = `${str}<tr><td><a href="${devUrl}">${d.description}</a></td><td class="lvl ${valStyle}">${val} ${d.depth.unit}</td></tr>\n`;
+        }
+
+        $("#ttbody").html(str);
+    }
+
+    function troughReqComplete() {
+        variableCount++;
+        if (variableCount >= devices.length) {
+            // Have to do this one last time because the devicesWithDepth
+            // isn't a reliable source. The async nature of the AJAX calls
+            // means that array is easily corrupted and I don't know how to
+            // put syncronisation in place to stop it.
+            //
+            // The devices array has the same objects so they also have the
+            // depth and can be used to build the final table.
+            buildTable(devices);
+            $('#spinner').attr('hidden', true);
+        }
+    }
+
+    $.ajax({
+        dataType: "json",
+        url: API_URL + "/devices/",
+        data: { "organization__label__iexact": "centreplus", "deviceGroup__name__iexact": "trough" },
+        headers: HEADERS
+    })
+    .done(function(data) {
+        for (let d of data.results) {
+            devices.push(d);
+
+            $.ajax({
+                dataType: "json",
+                url: API_URL + "/devices/" + d.id + "/variables/~depth",
+                headers: HEADERS
+            })
+            .done(function (data) {
+                d.depth = data;
+                devsWithDepth.push(d);
+                buildTable(devsWithDepth);
+            })
+            .always(troughReqComplete);
+        }
+    });
+/*** End of the JavaScript section. NOT THE LINE BELOW. ***/
+});
+</script>
+</head>
+<body>
+<!-- Copy this into the HTML section. -->
+<div id="tbldiv">
+    <h1 id="spinner" style="position: absolute; left: 50%; top: 50%; text-align: center;"><i class="fa fa-spinner fa-spin"></i></h1>
+    <table>
+        <thead>
+            <tr><th style="text-align: left">TROUGH</th><th style="text-align: right">DEPTH</th></tr>
+        </thead>
+        <tbody id="ttbody">
+        </tbody>
+    </table>
+</div>
+<!-- End of the HTML section. -->
+</body>
+</html>
