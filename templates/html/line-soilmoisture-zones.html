@@ -8,14 +8,17 @@
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<link href="https://iot.cdnedge.bluemix.net/iau/static/font-awesome/css/all.css" rel="stylesheet" type="text/css">
 	</head>
 
 	<body>
-		<div class="daterange">
-			&#128198;&nbsp;&nbsp;<input class="dateinput" type="text" name="daterange"/>
-		</div>&nbsp;
+		<div class="daterange" id="daterange">
+			<i class="fa fa-calendar"></i>
+			<span></span>
+			<i class="fa fa-caret-down"></i>
+		</div>
 		<div id="chart" class="chart">
-			<h1 style="position: absolute; left: 50%; top: 50%; text-align: center;"><i class="fa fa-spinner fa-spin"></i></h1>
+			<h1 style="font-family: 'Trebuchet MS'; position: absolute; left: 50%; top: 50%; text-align: center;"><i class="fa fa-spinner fa-spin"></i></h1>
 		</div>
 		<script type="text/javascript">
 
@@ -31,15 +34,15 @@
 
 			function initDate() {
 				// Default 7 day view
-				var startDate = moment().subtract(7, 'days');
+				var startDate = moment().subtract(13, 'days');
 				var endDate = moment();
-				$('input[name="daterange"]').daterangepicker({
+				$('#daterange span').html(startDate.format('MMMM D, YYYY') + ' - ' + endDate.format('MMMM D, YYYY'));
+				$('#daterange').daterangepicker({
 					ranges: {
 						'Today': [moment(), moment()],
-						'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
 						'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+						'Last 14 Days': [moment().subtract(13, 'days'), moment()],
 						'Last 30 Days': [moment().subtract(29, 'days'), moment()],
-						'This Month': [moment().startOf('month'), moment().endOf('month')],
 						'Last Year': [moment().subtract(1, 'year'), moment()]
 					},
 					startDate: startDate,
@@ -48,6 +51,7 @@
 						format: "DD/MM/YY hh:mm A"
 					}
 				}, function updateChart(start, end, label) {
+					$('#daterange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
 					var date = {
 						start: start.valueOf(),
 						end: end.valueOf()
@@ -111,7 +115,7 @@
 					title: {
 						text: 'Kanzi Block',
 						subtext: 'Average',
-						left: 50,
+						left: 70,
 					},
 					tooltip: {
 						trigger: 'axis',
@@ -120,7 +124,8 @@
 						}
 					},
 					toolbox: {
-						right: 50,
+						right: 70,
+						itemSize: 20,
 						show: true,
 						feature: {
 							saveAsImage: {},
@@ -135,18 +140,11 @@
 						icon: 'rect',
 						selected: {
 							"10 cm": false,
+							"60 cm": false,
 							"70 cm": false,
 							"80 cm": false,
 						}
 					},
-					dataZoom: [
-						{
-							type: 'inside',
-							yAxisIndex: [0],
-							startValue: 10,
-							endValue: 70,
-						}
-					],
 					xAxis: {
 						name: "Date (M)",
 						nameLocation: 'center',
@@ -168,42 +166,74 @@
 						{
 							name: "10 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[0].reverse(), // Reverse array as last value comes first
+							itemStyle: {
+								color: "#ffa600"
+							}
 						},
 						{
 							name: "20 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[1], // Reverse array as last value comes first
+							itemStyle: {
+								color: "#ff7c43"
+							}
 						},
 						{
 							name: "30 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[2], // Reverse array as last value comes first
+							itemStyle: {
+								color: "#f95d6a"
+							}
 						},
 						{
 							name: "40 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[3], 
+							itemStyle: {
+								color: "#d45087"
+							}
 						},
 						{
 							name: "50 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[4], // Reverse array as last value comes first
+							itemStyle: {
+								color: "#a05195"
+							}
 						},
 						{
 							name: "60 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[5], // Reverse array as last value comes first
+							itemStyle: {
+								color: "#665191"
+							}
 						},
 						{
 							name: "70 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[6], // Reverse array as last value comes first
+							itemStyle: {
+								color: "#2f4b7c"
+							}
 						},
 						{
 							name: "80 cm",
 							type: 'line',
+							symbol: 'none',
 							data: series[7], // Reverse array as last value comes first
+							itemStyle: {
+								color: "#003f5c"
+							}
 						},
 						{
 							name: "Zones",
