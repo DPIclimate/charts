@@ -95,9 +95,20 @@
 			}
 			function renderChart(response){
 				// TODO needs better error handling
+				var maxValue = 0;
+				var minValue = 0;
 				var series = response.map(function(_, i) {
 					var data = response[i].results.map(function (value, index) {
 						var date = new Date(value.timestamp);
+						if (value.value > maxValue) {
+							maxValue = value.value;
+						}
+						if (minValue == 0) {
+							minValue = value.value;
+						}
+						if (minValue > value.value) {
+							minValue = value.value;
+						}
 						return [date, value.value];
 					});
 					return data;
@@ -129,6 +140,7 @@
 						show: true,
 						feature: {
 							saveAsImage: {},
+							dataView: { show: true, readOnly: false },
 							dataZoom: {},
 							restore: {}
 						}
@@ -162,6 +174,14 @@
 						max: 100,
 						type: 'value',
 					},
+					dataZoom: [
+						{
+							type: "inside",
+							yAxisIndex: [0],
+							startValue: Math.floor(minValue - 5),
+							endValue: Math.ceil(maxValue + 5)
+						}
+					],
 					series: [
 						{
 							name: "10 cm",
