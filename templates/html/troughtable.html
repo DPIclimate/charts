@@ -19,6 +19,8 @@ There is a section for each of the HTML canvas widget settings or tabs.
 	width: 98vw;
 	top: 0;
 	left: 0;
+    overflow: auto;
+    background-color: gray;
 }
 
 table {
@@ -74,9 +76,7 @@ $(document).ready(() => {
     const HEADERS = { "X-Auth-Token": "BBAU-VOMMw42nHGcLPKVfBMQxYXDUiL78ln" };
 
     var devices = [];
-    var devsWithDepth = [];
-
-    var variableCount = 0;
+    var devMap = Object();
 
     function buildTable(devArray) {
         devArray.sort((a, b) => (a.depth.lastValue.value > b.depth.lastValue.value) ? 1 : -1)
@@ -98,43 +98,41 @@ $(document).ready(() => {
         $("#ttbody").html(str);
     }
 
-    function troughReqComplete() {
-        variableCount++;
-        if (variableCount >= devices.length) {
-            // Have to do this one last time because the devicesWithDepth
-            // isn't a reliable source. The async nature of the AJAX calls
-            // means that array is easily corrupted and I don't know how to
-            // put syncronisation in place to stop it.
-            //
-            // The devices array has the same objects so they also have the
-            // depth and can be used to build the final table.
-            buildTable(devices);
-            $('#spinner').attr('hidden', true);
-        }
-    }
-
     $.ajax({
         dataType: "json",
         url: API_URL + "/devices/",
-        data: { "organization__label__iexact": "centreplus", "deviceGroup__name__iexact": "trough" },
+        data: { "organization__label__iexact": "centreplus", "deviceGroup__name__iexact": "trough", "fields": "id,description" },
         headers: HEADERS
     })
     .done(function(data) {
+        // Build a list of device IDs to pass to the API call that gets the variables.
+        var devIds = "";
+        var first = true;
         for (let d of data.results) {
             devices.push(d);
+            devMap[d.id] = d;
 
-            $.ajax({
-                dataType: "json",
-                url: API_URL + "/devices/" + d.id + "/variables/~depth",
-                headers: HEADERS
-            })
-            .done(function (data) {
-                d.depth = data;
-                devsWithDepth.push(d);
-                buildTable(devsWithDepth);
-            })
-            .always(troughReqComplete);
+            if (first !== true) {
+                devIds += ","
+            }
+            first = false;
+            devIds += d.id;
         }
+        
+        $.ajax({
+            dataType: "json",
+            url: API_URL + "/variables/",
+            data: { "label": "depth", "device__id__in": devIds, "fields": "device,lastValue,unit" },
+            headers: HEADERS
+        })
+        .done(function(data) {
+            for (let d of data.results) {
+                devMap[d.device.id].depth = d;
+            }
+
+            buildTable(devices);
+            $('#spinner').attr('hidden', true);
+        });
     });
 /*** End of the JavaScript section. NOT THE LINE BELOW. ***/
 });
