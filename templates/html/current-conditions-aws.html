@@ -13,6 +13,19 @@ There is a section for each of the HTML canvas widget settings or tabs.
 <style>
 /*** Copy this into the CSS section. ***/
 
+.tblRow {
+    font-size: 25px;
+    text-align: center;
+    padding-left: 20px;
+    padding-top: 10px;
+}
+
+.tblHead {
+    font-size: 30px;
+    text-align: center;
+    padding-left: 20px;
+}
+
 /*** End of the CSS section. ***/
 </style>
 <script>
@@ -117,38 +130,38 @@ $(document).ready(() => {
                 for (let v of variables) {
                     if (dv === v.name) { // If variable exists in displayVars, output values. Check for type below to format.
                         if ( v.name == "airtemperature") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(245, 153, 5)">${v.description}</a></td><td style="text-align: center;color: rgb(245, 153, 5)">${v.lastValue.value}${v.unit}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(245, 153, 5)">${v.description}</a></td><td class="tblRow" style="color: rgb(245, 153, 5)">${v.lastValue.value}${v.unit}</td></tr>\n`;
                         }else if (v.name == "realfeel") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(54, 162, 235)">${"Feels Like"}</a></td><td style="text-align: center;color: rgb(54, 162, 235)">${Math.round((v.lastValue.value)*100)/100}${v.unit}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(54, 162, 235)">${"Feels Like"}</a></td><td class="tblRow" style="color: rgb(54, 162, 235)">${Math.round((v.lastValue.value)*100)/100}${v.unit}</td></tr>\n`;
                         }else if (v.name == "relativehumidity") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(8, 189, 129)">${"Humidity"}</a></td><td style="text-align: center;color: rgb(8, 189, 129)">${v.lastValue.value}${v.unit}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(8, 189, 129)">${"Humidity"}</a></td><td class="tblRow" style="color: rgb(8, 189, 129)">${v.lastValue.value}${v.unit}</td></tr>\n`;
                         }else if (v.name == "windspeed") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(135,206,250)">${v.description}</a></td><td style="text-align: center;color: rgb(135,206,250)">${Math.round((v.lastValue.value*3.6)*100)/100}${"km/h"}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(135,206,250)">${v.description}</a></td><td class="tblRow" style="color: rgb(135,206,250)">${Math.round((v.lastValue.value*3.6)*100)/100}${"km/h"} ${cardinalCompassWindDirection(v.lastValue.value)}</td></tr>\n`;
                         }else if (v.name == "gustspeed") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(70,130,180)">${v.description}</a></td><td style="text-align: center;color: rgb(70,130,180)">${Math.round((v.lastValue.value*3.6)*100)/100}${"km/h"}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(70,130,180)">${v.description}</a></td><td class="tblRow" style="color: rgb(70,130,180)">${Math.round((v.lastValue.value*3.6)*100)/100}${"km/h"} ${cardinalCompassWindDirection(v.lastValue.value)}</td></tr>\n`;
                         }else if (v.name == "precipitation") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(54, 162, 235)">${v.description}</a></td><td style="text-align: center;color: rgb(54, 162, 235)">${rainStatus(v.lastValue.value)}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(54, 162, 235)">${v.description}</a></td><td class="tblRow" style="color: rgb(54, 162, 235)">${rainStatus(v.lastValue.value)}</td></tr>\n`;
                         }else if (v.name == "solar") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(235, 54, 54)">${v.description}</a></td><td style="text-align: center;color: rgb(235, 54, 54)">${solarLightLevel(v.lastValue.value)}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(235, 54, 54)">${v.description}</a></td><td class="tblRow" style="color: rgb(235, 54, 54)">${solarLightLevel(v.lastValue.value)}</td></tr>\n`;
                         }else if (v.name == "strikes") {
-                            str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(158, 21, 189)">${v.description}</a></td><td style="text-align: center;color: rgb(158, 21, 189)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
+                            str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(158, 21, 189)">${v.description}</a></td><td class="tblRow" style="color: rgb(158, 21, 189)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
                         }else if (v.name == "deltaT") {
                             var deltConditions = deltaTConditions(v.lastValue.value)
                             if (v.lastValue.value != null && deltConditions == "Preferred") {
                                 // color: rgb(8, 189, 129)
-                                str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(8, 189, 129)">${v.description}</a></td><td style="text-align: center;color: rgb(8, 189, 129)">${deltConditions} ${v.lastValue.value}${v.unit}</td></tr>\n`;
+                                str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(8, 189, 129)">${v.description}</a></td><td class="tblRow" style="color: rgb(8, 189, 129)">${deltConditions} ${v.lastValue.value}${v.unit}</td></tr>\n`;
                                 
                             } else if (v.lastValue.value != null && deltConditions == "Unsuitable") {
                                 // color: rgb(235, 54, 54)
-                                str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(235, 54, 54)">${v.description}</a></td><td style="text-align: center;color: rgb(235, 54, 54)">${deltConditions} ${v.lastValue.value}${v.unit}</td></tr>\n`;
+                                str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(235, 54, 54)">${v.description}</a></td><td class="tblRow" style="color: rgb(235, 54, 54)">${deltConditions} ${v.lastValue.value}${v.unit}</td></tr>\n`;
                                 
                             } else if (v.lastValue.value != null && deltConditions == "Marginal") {
                                 // color: rgb(245, 153, 5)
-                                str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(245, 153, 5)">${v.description}</a></td><td style="text-align: center;color: rgb(245, 153, 5)">${deltConditions} ${v.lastValue.value}${v.unit}</td></tr>\n`;
+                                str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(245, 153, 5)">${v.description}</a></td><td class="tblRow" style="color: rgb(245, 153, 5)">${deltConditions} ${v.lastValue.value}${v.unit}</td></tr>\n`;
 
                             } else if (v.lastValue.value != null && deltConditions == "Unknown") {
                                 // color: rgb(148, 148, 148)
-                                str = `${str}<tr><td style="text-align: center"><a href="${v.url}" style="color: rgb(148, 148, 148)">${v.description}</a></td><td style="text-align: center;color: rgb(148, 148, 148)">${deltConditions}</td></tr>\n`;
+                                str = `${str}<tr><td class="tblRow""><a href="${v.url}" style="color: rgb(148, 148, 148)">${v.description}</a></td><td class="tblRow" style="color: rgb(148, 148, 148)">${deltConditions}</td></tr>\n`;
                                 
                             }
                         }
@@ -181,7 +194,7 @@ $(document).ready(() => {
 
 <table>
     <thead>
-        <tr><th style="text-align: center">Current Conditions</th><th style="text-align: center">Value</th></tr>
+        <tr><th class="tblHead">Current Conditions</th><th class="tblHead">Value</th></tr>
     </thead>
     <tbody id="ttbody">
     </tbody>
