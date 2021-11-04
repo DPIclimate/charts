@@ -26,7 +26,8 @@
 			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
 			const DEVICE_NAME = "stoneleigh-sm-kanzi-block";
 			const VARIABLES = ["av-10cm", "av-20cm", "av-30cm",	"av-40cm", 
-							"av-50cm", "av-60cm", "av-70cm", "av-80cm"];
+							"av-50cm", "av-60cm", "av-70cm", "av-80cm", 
+							"stdev-10cm-kanzi"];
 			// Optional
 			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
 			const RETURN_TYPE = "json";
@@ -69,7 +70,6 @@
 			var date = initDate();
 
 			async function getData(date) {
-				// TODO add error handling here
 				try {
 					const urls = VARIABLES.map(function(_, i) {
 						var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
@@ -91,10 +91,11 @@
 				} catch (error) {
 					console.log(error);
 				}
-
 			}
+
+
+
 			function renderChart(response){
-				// TODO needs better error handling
 				var maxValue = 0;
 				var minValue = 0;
 				var series = response.map(function(_, i) {
@@ -114,10 +115,16 @@
 					return data;
 				});
 
+				var lowerError = [];
+				for (let i in series[0]) {
+					var avg = series[0][i][1];
+					var stdev = series[8][i][1];
+					lowerError.push([series[8][i][0], avg - stdev]);
+				}
+
 				var chartDom = document.getElementById('chart');
 				var chart = echarts.init(chartDom);
 				
-				// Resize chart with window size
 				window.onresize = function() {
 					chart.resize();
 				};
@@ -151,7 +158,7 @@
 						show: true,
 						icon: 'rect',
 						selected: {
-							"10 cm": false,
+							"10 cm": true,
 							"60 cm": false,
 							"70 cm": false,
 							"80 cm": false,
@@ -190,7 +197,7 @@
 							data: series[0].reverse(), // Reverse array as last value comes first
 							itemStyle: {
 								color: "#ffa600"
-							}
+							},
 						},
 						{
 							name: "20 cm",
@@ -255,6 +262,59 @@
 								color: "#003f5c"
 							}
 						},
+
+						// Depth 1 error
+						{
+							name: "Error",
+							itemStyle: {
+								color: "#ccc"
+							},
+							type: 'line',
+							data: lowerError,
+							lineStyle: {
+								opacity: 0
+							},
+							stack: '10cm-lower',
+							symbol: 'none'
+						},
+						{
+							name: "Error",
+							type: 'line',
+							data: series[8],
+							lineStyle: {
+								opacity: 0
+							},
+							areaStyle: {
+								color: '#ccc'
+							},
+							stack: '10cm-lower',
+							symbol: 'none'
+						},
+
+						{
+							name: "Error",
+							type: 'line',
+							data: series[0].reverse(),
+							lineStyle: {
+								opacity: 0
+							},
+							stack: '10cm-upper',
+							symbol: 'none'
+						},
+						{
+							name: "Error",
+							type: 'line',
+							data: series[8],
+							lineStyle: {
+								opacity: 0
+							},
+							areaStyle: {
+								color: '#ccc'
+							},
+							stack: '10cm-upper',
+							symbol: 'none'
+						},
+
 						{
 							name: "Zones",
 							color: 'rgba(80, 255, 120, 0.4)',
