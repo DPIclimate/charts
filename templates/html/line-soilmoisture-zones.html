@@ -6,6 +6,7 @@
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+		<script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
 		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 		<link href="https://iot.cdnedge.bluemix.net/iau/static/font-awesome/css/all.css" rel="stylesheet" type="text/css">
@@ -18,16 +19,16 @@
 			<i class="fa fa-caret-down"></i>
 		</div>
 		<div id="chart" class="chart">
-			<h1 style="font-family: 'Trebuchet MS'; position: absolute; left: 50%; top: 50%; text-align: center;"><i class="fa fa-spinner fa-spin"></i></h1>
 		</div>
 		<script type="text/javascript">
 
 			// Begin setup
 			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
-			const DEVICE_NAME = "stoneleigh-sm-kanzi-block";
+			const DEVICE_NAME = "stoneleigh-sm-east-trellis";
 			const VARIABLES = ["av-10cm", "av-20cm", "av-30cm",	"av-40cm", 
-							"av-50cm", "av-60cm", "av-70cm", "av-80cm", 
-							"stdev-10cm-kanzi"];
+							"av-50cm", "av-60cm", "av-70cm", "av-80cm"];
+			const STDEVS = ["stdev-10cm", "stdev-20cm", "stdev-30cm", "stdev-40cm",
+						"stdev-50cm", "stdev-60cm", "stdev-70cm", "stdev-80cm"];
 			// Optional
 			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
 			const RETURN_TYPE = "json";
@@ -69,306 +70,117 @@
 
 			var date = initDate();
 
-			async function getData(date) {
+
+			async function getData(date, type) {
 				try {
-					const urls = VARIABLES.map(function(_, i) {
+					const avg_urls = VARIABLES.map(function(_, i) {
 						var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
 									DEVICE_NAME + "/" + VARIABLES[i] + "/values/?start=" +
 									date.start + "&end=" + date.end +
 									"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
 						return url;
 					});
-					const request = Array.from(Array(urls.length)).map(async function(_, i) {
-						const req = await fetch(urls[i], {
+					const avg_request = Array.from(Array(avg_urls.length)).map(async function(_, i) {
+						const req = await fetch(avg_urls[i], {
 							method: "GET",
 							headers: {"X-Auth-Token": READ_ONLY_TOKEN}
 						});
 						return req.json();
 					});
-
-					const response = await Promise.all(request);
-					return response;
+					const stdev_urls = STDEVS.map(function(_, i) {
+						var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
+									DEVICE_NAME + "/" + STDEVS[i] + "/values/?start=" +
+									date.start + "&end=" + date.end +
+									"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
+						return url;
+					});
+					const stdev_request = Array.from(Array(stdev_urls.length)).map(async function(_, i) {
+						const req = await fetch(stdev_urls[i], {
+							method: "GET",
+							headers: {"X-Auth-Token": READ_ONLY_TOKEN}
+						});
+						return req.json();
+					});
+					const avgs = await Promise.all(avg_request);
+					const stdevs = await Promise.all(stdev_request);
+					return {
+						avg: avgs,
+						stdev: stdevs
+					}
 				} catch (error) {
 					console.log(error);
 				}
 			}
 
 
-
 			function renderChart(response){
-				var maxValue = 0;
-				var minValue = 0;
-				var series = response.map(function(_, i) {
-					var data = response[i].results.map(function (value, index) {
+				var avgResponse = response.avg
+				var stdevResponse = response.stdev
+				var series = avgResponse.map(function(_, i) {
+					var data = avgResponse[i].results.map(function (value, index) {
 						var date = new Date(value.timestamp);
-						if (value.value > maxValue) {
-							maxValue = value.value;
-						}
-						if (minValue == 0) {
-							minValue = value.value;
-						}
-						if (minValue > value.value) {
-							minValue = value.value;
-						}
 						return [date, value.value];
 					});
 					return data;
 				});
 
-				var lowerError = [];
-				for (let i in series[0]) {
-					var avg = series[0][i][1];
-					var stdev = series[8][i][1];
-					lowerError.push([series[8][i][0], avg - stdev]);
-				}
+				var stdevSeries = stdevResponse.map(function(_, i) {
+					var data = stdevResponse[i].results.map(function (value, index) {
+						var date = new Date(value.timestamp);
+						return [date, value.value];
+					});
+					return data;
+				});
 
-				var chartDom = document.getElementById('chart');
-				var chart = echarts.init(chartDom);
-				
-				window.onresize = function() {
-					chart.resize();
+
+				var chartSeries = [];
+				for (let i in series) {
+					var ts = series[i].map((value) => {
+						return value[0];
+					});
+					var values = series[i].map((value) => {
+						return value[1];
+					});
+					var stdevValues = stdevSeries[i].map((value) => {
+						return value[1];
+					});
+					chartSeries.push({
+						//name: "10 cm",
+						x: ts.reverse(),
+						y: values.reverse(),
+						error_y: {
+							type: 'data',
+							array: stdevValues,
+							opacity: 0.1,
+							width: 0,
+							visible: true
+						},
+						type: 'scatter'
+					});
 				};
 
-				var options = {
-					title: {
-						text: 'Kanzi Block',
-						subtext: 'Average',
-						left: 70,
-					},
-					tooltip: {
-						trigger: 'axis',
-						axisPointer: {
-							type: 'cross'
-						}
-					},
-					toolbox: {
-						right: 70,
-						itemSize: 20,
-						show: true,
-						feature: {
-							saveAsImage: {},
-							dataView: { show: true, readOnly: false },
-							dataZoom: {},
-							restore: {}
-						}
-					},
-					legend: {
-						bottom: 70,
-						width: 400,
-						show: true,
-						icon: 'rect',
-						selected: {
-							"10 cm": true,
-							"60 cm": false,
-							"70 cm": false,
-							"80 cm": false,
-						}
-					},
-					xAxis: {
-						name: "Date (M)",
-						nameLocation: 'center',
-						nameGap: 25,
-						type: 'time',
-						splitArea: {
-							show: true
-						}
-					},
-					yAxis: {
-						name: "Voumetric water content (%)",
-						nameLocation: 'center',
-						nameGap: 25,
-						min: 0,
-						max: 100,
-						type: 'value',
-					},
-					dataZoom: [
-						{
-							type: "inside",
-							yAxisIndex: [0],
-							startValue: Math.floor(minValue - 5),
-							endValue: Math.ceil(maxValue + 5)
-						}
-					],
-					series: [
-						{
-							name: "10 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[0].reverse(), // Reverse array as last value comes first
-							itemStyle: {
-								color: "#ffa600"
-							},
-						},
-						{
-							name: "20 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[1], // Reverse array as last value comes first
-							itemStyle: {
-								color: "#ff7c43"
-							}
-						},
-						{
-							name: "30 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[2], // Reverse array as last value comes first
-							itemStyle: {
-								color: "#f95d6a"
-							}
-						},
-						{
-							name: "40 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[3], 
-							itemStyle: {
-								color: "#d45087"
-							}
-						},
-						{
-							name: "50 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[4], // Reverse array as last value comes first
-							itemStyle: {
-								color: "#a05195"
-							}
-						},
-						{
-							name: "60 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[5], // Reverse array as last value comes first
-							itemStyle: {
-								color: "#665191"
-							}
-						},
-						{
-							name: "70 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[6], // Reverse array as last value comes first
-							itemStyle: {
-								color: "#2f4b7c"
-							}
-						},
-						{
-							name: "80 cm",
-							type: 'line',
-							symbol: 'none',
-							data: series[7], // Reverse array as last value comes first
-							itemStyle: {
-								color: "#003f5c"
-							}
-						},
 
-						// Depth 1 error
-						{
-							name: "Error",
-							itemStyle: {
-								color: "#ccc"
+				var layout = {
+    				shapes: [
+    					{
+        					type: 'rect',
+							xref: 'paper',
+							x0: 0,
+							y0: 22.0,
+							x1: 1,
+							y1: 39.0,
+							line:{
+								width: 0
 							},
-							type: 'line',
-							data: lowerError,
-							lineStyle: {
-								opacity: 0
-							},
-							stack: '10cm-lower',
-							symbol: 'none'
-						},
-						{
-							name: "Error",
-							type: 'line',
-							data: series[8],
-							lineStyle: {
-								opacity: 0
-							},
-							areaStyle: {
-								color: '#ccc'
-							},
-							stack: '10cm-lower',
-							symbol: 'none'
-						},
-
-						{
-							name: "Error",
-							type: 'line',
-							data: series[0].reverse(),
-							lineStyle: {
-								opacity: 0
-							},
-							stack: '10cm-upper',
-							symbol: 'none'
-						},
-						{
-							name: "Error",
-							type: 'line',
-							data: series[8],
-							lineStyle: {
-								opacity: 0
-							},
-							areaStyle: {
-								color: '#ccc'
-							},
-							stack: '10cm-upper',
-							symbol: 'none'
-						},
-
-						{
-							name: "Zones",
-							color: 'rgba(80, 255, 120, 0.4)',
-							type: 'line',
-							data: [],
-							markLine: {
-								data: 
-									[{
-										label: {
-											position: 'insideEndBottom',
-											formatter: "Field Capacity",
-										},
-										itemStyle: {
-											color: 'rgba(0, 0, 0, 1)'
-										},
-										yAxis: 39 
-									},
-									{
-										label: {
-											position: 'insideEndTop',
-											formatter: "Wilting Point",
-										},
-										itemStyle: {
-											color: 'rgba(0, 0, 0, 1)'
-										},
-										yAxis: 22
-									},
-								],
-							},
-							markArea: {
-								label: {
-									show: true,
-									position: 'inside',
-									color: '#000'
-								},
-								data: [
-									[{
-										name: "Available water",
-										itemStyle: {
-											color: 'rgba(80, 255, 120, 0.2)'
-										},
-										yAxis: 22,
-										},
-										{
-											yAxis: 39,
-										}],
-								]
-							}
+							fillcolor:"LightGreen",
+							layer: "below",
+							opacity: 0.2
 						}
-					]
-				};
-				options && chart.setOption(options);
+    				]
+				}	
+
+				Plotly.newPlot('chart', chartSeries, layout);
 			}
-
 			getData(date).then((response) => {
 				renderChart(response);
 			});

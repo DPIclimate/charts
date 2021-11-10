@@ -1,0 +1,121 @@
+<!--
+This is a single-file template that can be used to develop and test ubidots HTML canvas widgets.
+
+There is a section for each of the HTML canvas widget settings or tabs.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!-- Copy these URLs into the external library section. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<!-- End of the external library section. -->
+</head>
+
+<style>
+body {
+  font-family: 'lato', sans-serif;
+  font-weight: normal;
+}
+
+.container{ 
+	width: 100%;
+}
+
+table{ 
+	width: 100%;
+}
+	
+
+td, th {
+	border: 1px solid  #f2f2f2;
+	padding: 8px;
+}
+
+tr > * + * {
+	padding-left: 1em;
+}
+
+tr:nth-child(even) {
+	background-color: #f2f2f2;
+}
+
+tr:hover {
+	background-color: #ddd;
+}
+
+th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: center;
+  background-color: #1c2a52;
+  color: white;
+}
+
+</style>
+
+<body>
+<script>
+
+	async function getData() {
+		try {
+			const url = "https://sherman-pablo.bnr.la/stoneleigh_props.json";
+
+			const req = await fetch(url, {
+				method: "GET",
+				type: "application/json",
+			});
+
+			if (req.ok) {
+				let res = await req.json();
+				return res;
+			}
+			return Null;
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
+	getData().then((response) => {
+		var props = response.map((prop) => {
+			var name = prop["name"];
+			var org = prop["organization"]["name"];
+			var config = prop["properties"]["_config"]["error"];
+			if(typeof config != 'undefined'){
+				return {
+					name: name,
+					organisation: org,
+					properties: config
+				};
+			} 
+			return null;
+		});
+
+
+		var table = document.getElementById("table");	
+		props.map((prop) => {
+			if (prop) {
+				var row = table.insertRow(1);
+				row.insertCell(0).innerHTML = prop["name"];
+				row.insertCell(1).innerHTML = prop["organisation"];
+				row.insertCell(2).innerHTML = prop["properties"]["text"].replace(" ", "");
+				row.insertCell(3).innerHTML = prop["properties"]["description"];
+			}
+		});
+	});
+
+</script>
+
+<div class="container">
+    <table id="table" class="tablesorter">
+		<tr>
+			<th id="name">Name</th>
+			<th id="org">Org</th>
+			<th id="type">Type</th>
+			<th id="desc">Description</th>
+		</tr>
+    </table>
+</div>
+
+</body>
+</html>
