@@ -44,6 +44,26 @@ td {
     line-height: 21px;
 }
 
+/*
+ * These classes are named after the return values from deltaTConditions(deltaT)
+ * so must be kept in sync with the function.
+ */
+.Preferred {
+    color: #00876c;
+}
+
+.Marginal {
+    color: #f7ba6e;
+}
+
+.Unsuitable {
+    color: #d43d51;
+}
+
+.Error {
+    color: #949494;
+}
+
 /*** End of the CSS section. ***/
 </style>
 <script>
@@ -67,6 +87,9 @@ $(document).ready(() => {
         return precipVal;
     }
 
+    /*
+     * These return values are used as class names so must be kept in sync with the CSS.
+     */
     function deltaTConditions(deltaT) {
         if (! $.isNumeric(deltaT) || deltaT < 0) {
             return "Error";
@@ -146,42 +169,33 @@ $(document).ready(() => {
 
             // Construct a URL that will open the variable page. The url field from the variable cannot be used
             // because that is an API endpoint.
-            var varUrl = PAGE_BASE_URL + `/app/devices/${DEVICE}/${v.id}`;
+            var varUrl =  `${PAGE_BASE_URL}/app/devices/${DEVICE}/${v.id}`;
 
-            if ( v.name == "airtemperature") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(245, 153, 5)">${v.description}</a></td><td class="tblRow" style="color: rgb(245, 153, 5)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
-            } else if (v.name == "realfeel") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(54, 162, 235)">${v.description}</a></td><td class="tblRow" style="color: rgb(54, 162, 235)">${Math.round((v.lastValue.value)*100)/100} ${v.unit}</td></tr>\n`;
-            } else if (v.name == "relativehumidity") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(8, 189, 129)">${v.description}</a></td><td class="tblRow" style="color: rgb(8, 189, 129)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
-            } else if (v.name == "windspeed") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(135,206,250)">${v.description}</a></td><td class="tblRow" style="color: rgb(135,206,250)">${Math.round((v.lastValue.value*3.6)*100)/100} km/h ${cardinalCompassWindDirection(v.lastValue.value)}</td></tr>\n`;
-            } else if (v.name == "gustspeed") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(70,130,180)">${v.description}</a></td><td class="tblRow" style="color: rgb(70,130,180)">${Math.round((v.lastValue.value*3.6)*100)/100} km/h ${cardinalCompassWindDirection(v.lastValue.value)}</td></tr>\n`;
-            } else if (v.name == "precipitation") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(54, 162, 235)">${v.description}</a></td><td class="tblRow" style="color: rgb(54, 162, 235)">${rainStatus(v.lastValue.value)}</td></tr>\n`;
-            } else if (v.name == "solar") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(235, 54, 54)">${v.description}</a></td><td class="tblRow" style="color: rgb(235, 54, 54)">${solarLightLevel(v.lastValue.value)}</td></tr>\n`;
-            } else if (v.name == "strikes") {
-                str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(158, 21, 189)">${v.description}</a></td><td class="tblRow" style="color: rgb(158, 21, 189)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
-            } else if (v.name == "deltaT") {
-                var deltConditions = deltaTConditions(v.lastValue.value)
-                if (v.lastValue.value != null && deltConditions == "Preferred") {
-                    // color: rgb(8, 189, 129)
-                    str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(8, 189, 129)">${v.description}</a></td><td class="tblRow" style="color: rgb(8, 189, 129)">${v.lastValue.value} ${v.unit} - ${deltConditions}</td></tr>\n`;
-                    
-                } else if (v.lastValue.value != null && deltConditions == "Unsuitable") {
-                    // color: rgb(235, 54, 54)
-                    str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(235, 54, 54)">${v.description}</a></td><td class="tblRow" style="color: rgb(235, 54, 54)">${v.lastValue.value} ${v.unit} - ${deltConditions}</td></tr>\n`;
-                    
-                } else if (v.lastValue.value != null && deltConditions == "Marginal") {
-                    // color: rgb(245, 153, 5)
-                    str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(245, 153, 5)">${v.description}</a></td><td class="tblRow" style="color: rgb(245, 153, 5)">${v.lastValue.value} ${v.unit} - ${deltConditions}</td></tr>\n`;
-
+            if (v.name === "airtemperature") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(245, 153, 5)">${v.description}</a></td><td style="color: rgb(245, 153, 5)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
+            } else if (v.name === "realfeel") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(54, 162, 235)">${v.description}</a></td><td style="color: rgb(54, 162, 235)">${Math.round((v.lastValue.value)*100)/100} ${v.unit}</td></tr>\n`;
+            } else if (v.name === "relativehumidity") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(8, 189, 129)">${v.description}</a></td><td style="color: rgb(8, 189, 129)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
+            } else if (v.name === "windspeed") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(135,206,250)">${v.description}</a></td><td style="color: rgb(135,206,250)">${Math.round((v.lastValue.value*3.6)*100)/100} km/h ${cardinalCompassWindDirection(v.lastValue.value)}</td></tr>\n`;
+            } else if (v.name === "gustspeed") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(70,130,180)">${v.description}</a></td><td style="color: rgb(70,130,180)">${Math.round((v.lastValue.value*3.6)*100)/100} km/h ${cardinalCompassWindDirection(v.lastValue.value)}</td></tr>\n`;
+            } else if (v.name === "precipitation") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(54, 162, 235)">${v.description}</a></td><td style="color: rgb(54, 162, 235)">${rainStatus(v.lastValue.value)}</td></tr>\n`;
+            } else if (v.name === "solar") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(235, 54, 54)">${v.description}</a></td><td style="color: rgb(235, 54, 54)">${solarLightLevel(v.lastValue.value)}</td></tr>\n`;
+            } else if (v.name === "strikes") {
+                str = `${str}<tr><td><a href="${varUrl}" target="_blank" style="color: rgb(158, 21, 189)">${v.description}</a></td><td style="color: rgb(158, 21, 189)">${v.lastValue.value} ${v.unit}</td></tr>\n`;
+            } else if (v.name === "deltaT") {
+                // Putting the latest variable value into a local variable makes it easier to test this by hard-coding the value of deltaT.
+                var deltaT = v.lastValue.value;
+                var deltConditions = deltaTConditions(deltaT)
+                
+                if (deltConditions !== "Error") {
+                    str = `${str}<tr><td><a href="${varUrl}" target="_blank" class="${deltConditions}">${v.description}</a></td><td class="${deltConditions}">${deltaT} ${v.unit} - ${deltConditions}</td></tr>\n`;
                 } else {
-                    // color: rgb(148, 148, 148)
-                    str = `${str}<tr><td class="tblRow""><a href="${varUrl}" target="_blank" style="color: rgb(148, 148, 148)">${v.description}</a></td><td class="tblRow" style="color: rgb(148, 148, 148)">${deltConditions}</td></tr>\n`;
-                    
+                    str = `${str}<tr><td><a href="${varUrl}" target="_blank" class="${deltConditions}">${v.description}</a></td><td class="${deltConditions}">${deltConditions}</td></tr>\n`;
                 }
             }
         }
