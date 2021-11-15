@@ -27,8 +27,6 @@ There is a section for each of the HTML canvas widget settings or tabs.
 	top: 0;
 	left: 0;
     overflow: auto;
-    background-color: #e0e0e0;
-    
 }
 
 table {
@@ -93,11 +91,11 @@ $(document).ready(() => {
 /*** Copy this into the JavaScript section. NOT THE LINE ABOVE. ***/
     const API_URL = "https://industrial.api.ubidots.com/api/v2.0";
     const PAGE_BASE_URL = new URL(window.location.href).origin;
-    const HEADERS = { "X-Auth-Token": "BBAU-VOMMw42nHGcLPKVfBMQxYXDUiL78ln" };
+    const HEADERS = { "X-Auth-Token": "..." };
 
     var organisation = "centreplus";
     var deviceGroup = "trough";
-    
+
     var devMap = new Map();
 
     $.ajax({
