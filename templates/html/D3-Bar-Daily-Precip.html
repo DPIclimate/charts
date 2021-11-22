@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 
+<!--
+     This is for local testing. The ubidots.js script simulates the Ubidots() interface available
+     at runtime for the token and date range (and selected device for dynamic dashboards).
+
+     See: https://help.ubidots.com/en/articles/2508317-html-canvas-interacting-with-account-data
+-->
+<script src="ubidots.js"></script>
+
 <!-- Load d3.js -->
 <script src="https://d3js.org/d3.v4.js"></script>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
@@ -9,47 +17,112 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
 <style>
-
-#totalPrecipContainer {
-    height: 2px;
-}
-    
+    #totalPrecipContainer {
+        height: 2px;
+    }
 </style>
 
 <div class="allHTML" style="text-align: center;">
-
-
-
-<!-- Add 2 buttons -->
-<div class="buttonDataSets">
-&#128198;&nbsp;&nbsp;<input class="dateinput" type="text" name="daterange" style="width: 200px;"/>
-<button onclick="update(data1);setPrecipTotal(dailyPrecipTotal);">Daily Precipitation</button>
-<button onclick="update(data2);setPrecipTotal();">Monthly Precipitation</button>
+    <!-- Add 2 buttons -->
+    <div class="buttonDataSets">
+<!--        &#128198;&nbsp;&nbsp;<input class="dateinput" type="text" name="daterange" style="width: 200px;" /> -->
+        <button onclick="update(data1);setPrecipTotal(dailyPrecipTotal);">Daily Precipitation</button>
+        <button onclick="update(data2);setPrecipTotal();">Monthly Precipitation</button>
+    </div>
+    <div id="totalPrecipContainer">
+        <p id="totalPrecip" style="font-family: sans-serif;"></p>
+    </div>
+    <!-- Create a div where the graph will take place -->
+    <div id="barChart"></div>
 </div>
-<div id="totalPrecipContainer">
-<p id="totalPrecip" style="font-family: sans-serif;"></p>
-</div>
-<!-- Create a div where the graph will take place -->
-<div id="barChart"></div>
-
-</div>
-
-
 
 <script>
-
     // Global variables
-    const HEADERS = { "X-Auth-Token": "..." };
+    var headers = {};
     const DEVICE_NAME = "...";
-	const dailyPrecipVar = "daily_precip_total_9am-9am";
+    const dailyPrecipVar = "daily_precip_total_9am-9am";
     const monthlyPrecipVar = "monthly_precip_total";
+
+    var ubidots = new Ubidots();
+    var date = null;
+    var dailyPrecip = [];
+    var dailyPrecipTotal = 0;
+    var monthlyPrecip = [];
+    var monthlyPrecipTotal = 0;
+
+    var gotToken = false;
+    var gotDate = false;
+
+    // set the dimensions and margins of the graph
+    var margin = { top: 30, right: 30, bottom: 70, left: 60 },
+        width = 460 * 2 - margin.left - margin.right,
+        height = 400 * 2 - margin.top - margin.bottom;
+
+    // append the svg object to the body of the page
+    var svg = d3.select("#barChart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform",
+            "translate(" + margin.left + "," + margin.top + ")");
+
+    // Initialize the X axis
+    var x = d3.scaleBand()
+        .range([0, width])
+        .padding(0.2);
+    var xAxis = svg.append("g")
+        .attr("transform", "translate(0," + height + ")")
+
+    // Initialize the Y axis
+    var y = d3.scaleLinear()
+        .range([height, 0]);
+    var yAxis = svg.append("g")
+        .attr("class", "myYaxis")
+
+
+    ubidots.on('receivedToken', function (data) {
+        headers["X-Auth-Token"] = data;
+        gotToken = true;
+
+        doIt();
+    });
+
+    ubidots.on('selectedDashboardDateRange', function (data) {
+        date = data;
+        gotDate = true;
+        doIt();
+    });
+
+
+    function doIt() {
+        if ( ! (gotDate === true && gotToken === true)) {
+            console.log('Waiting on Ubidots info.');
+            return;
+        }
+
+        // 2 x API Request, daily and monthly precipitation.
+        getDailyPrecip(date);
+        getMonthlyPrecip();
+
+        // create 2 data_set
+        var data1 = [
+            { group: "A", value: 1 }
+        ];
+
+        var data2 = [
+            { group: "A", value: 2 }
+        ];
+
+        console.log(data1);
+    }
 
     function processDailyPrecip() {
         dailyPrecip = dailyPrecip.reverse();
         console.log(dailyPrecip);
         data1 = [];
-        for (let pV of dailyPrecip){
-            data1.push({group: pV.date, value: pV.value});
+        for (let pV of dailyPrecip) {
+            data1.push({ group: pV.date, value: pV.value });
         }
         update(data1);
         setPrecipTotal(dailyPrecipTotal);
@@ -59,8 +132,8 @@
         monthlyPrecip = monthlyPrecip.reverse();
         console.log(monthlyPrecip);
         data2 = [];
-        for (let mV of monthlyPrecip){
-            data2.push({group: mV.date, value: mV.value});
+        for (let mV of monthlyPrecip) {
+            data2.push({ group: mV.date, value: mV.value });
         }
     }
 
@@ -89,153 +162,99 @@
         };
     };
 
-    var date = initDate();
-
-    console.log(date);
-
-    // 2 x API Request, daily and monthly precipitation.
-
-    var dailyPrecip = [];
-    var dailyPrecipTotal = 0;
-
-    function getDailyPrecip(date){
+    function getDailyPrecip(date) {
         dailyPrecipTotal = 0;
         var dailyPrecipURL = "https://industrial.api.ubidots.com/api/v1.6/devices/" + DEVICE_NAME + "/" + dailyPrecipVar + "/values/?start=" + date.start + "&end=" + date.end + "&page_size=10000&format=json";
         $.ajax({
             dataType: "json",
             url: dailyPrecipURL,
-            headers: HEADERS,
+            headers: headers,
         })
-        .done(function(data) {
-            for (let v of data.results) {
-                var date = new Date(v.timestamp)
-                var dateString = moment(new Date(v.timestamp)).format("Do") + " " + moment(new Date(v.timestamp)).format("MMM");
-                dailyPrecip.push({date: dateString, value: v.value});
-                dailyPrecipTotal += v.value;
-            }
-        }).done(processDailyPrecip);
+            .done(function (data) {
+                for (let v of data.results) {
+                    var date = new Date(v.timestamp)
+                    var dateString = moment(new Date(v.timestamp)).format("Do") + " " + moment(new Date(v.timestamp)).format("MMM");
+                    dailyPrecip.push({ date: dateString, value: v.value });
+                    dailyPrecipTotal += v.value;
+                }
+            }).done(processDailyPrecip);
     }
 
-    var monthlyPrecip = [];
-    var monthlyPrecipTotal = 0;
-
-    function getMonthlyPrecip(){
+    function getMonthlyPrecip() {
         var monthlyPrecipURL = "https://industrial.api.ubidots.com/api/v1.6/devices/" + DEVICE_NAME + "/" + monthlyPrecipVar + "/values/?start=" + moment(date.end).subtract(1, "years") + "&end=" + date.end + "&page_size=10000&format=json";
         $.ajax({
             dataType: "json",
             url: monthlyPrecipURL,
-            headers: HEADERS,
+            headers: headers,
         })
-        .done(function(data) {
-            for (let v of data.results) {
-                var dateString = moment(new Date(v.timestamp)).format("MMMM");
-                monthlyPrecip.push({date: dateString, value: v.value});
-            }
-        }).done(processMonthlyPrecip);
+            .done(function (data) {
+                for (let v of data.results) {
+                    var dateString = moment(new Date(v.timestamp)).format("MMMM");
+                    monthlyPrecip.push({ date: dateString, value: v.value });
+                }
+            }).done(processMonthlyPrecip);
     }
 
-    function setPrecipTotal(totalPrecip){
-        if(totalPrecip != null){
-            totalPrecip = Math.round(totalPrecip * 100)/100;
+    function setPrecipTotal(totalPrecip) {
+        if (totalPrecip != null) {
+            totalPrecip = Math.round(totalPrecip * 100) / 100;
             document.getElementById("totalPrecip").innerHTML = "Total: " + totalPrecip + " mm";
-        }else{
+        } else {
             document.getElementById("totalPrecip").innerHTML = "";
         }
     }
 
-    getDailyPrecip(date);
-    getMonthlyPrecip();
-
-    // create 2 data_set
-    var data1 = [
-       {group: "A", value: 1}
-    ];
-    
-    var data2 = [
-       {group: "A", value: 2}
-    ];
-    
-    console.log(data1);
-
-    // set the dimensions and margins of the graph
-    var margin = {top: 30, right: 30, bottom: 70, left: 60},
-        width = 460*2 - margin.left - margin.right,
-        height = 400*2 - margin.top - margin.bottom;
-    
-    // append the svg object to the body of the page
-    var svg = d3.select("#barChart")
-      .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-        .attr("transform",
-              "translate(" + margin.left + "," + margin.top + ")");
-    
-    // Initialize the X axis
-    var x = d3.scaleBand()
-      .range([ 0, width ])
-      .padding(0.2);
-    var xAxis = svg.append("g")
-      .attr("transform", "translate(0," + height + ")")
-    
-    // Initialize the Y axis
-    var y = d3.scaleLinear()
-      .range([ height, 0]);
-    var yAxis = svg.append("g")
-      .attr("class", "myYaxis")
-    
-    
     // A function that create / update the plot for a given variable:
     function update(data) {
-    
-    svg.append('text')
-    .attr('x', -(height)/2)
-    .attr('y', -(margin.top))
-    .attr('transform', 'rotate(-90)')
-    .attr('text-anchor', 'middle')
-    .attr('font-family', 'sans-serif')
-    .attr('font-style', 'normal')
-    .text('Precipitation (mm)')
 
-    svg.append('text')
-    .attr('x', (width)/2)
-    .attr('y', (height)+50)
-    .attr('text-anchor', 'middle')
-    .attr('font-family', 'sans-serif')
-    .attr('font-style', 'normal')
-    .text('Date')
+        svg.append('text')
+            .attr('x', -(height) / 2)
+            .attr('y', -(margin.top))
+            .attr('transform', 'rotate(-90)')
+            .attr('text-anchor', 'middle')
+            .attr('font-family', 'sans-serif')
+            .attr('font-style', 'normal')
+            .text('Precipitation (mm)')
 
-      // Update the X axis
-      x.domain(data.map(function(d) { return d.group; }))
-      xAxis.call(d3.axisBottom(x))
-    
-      // Update the Y axis
-      y.domain([0, d3.max(data, function(d) { return d.value }) ]);
-      yAxis.transition().duration(1000).call(d3.axisLeft(y));
-    
-      // Create the u variable
-      var u = svg.selectAll("rect")
-        .data(data)
-    
-      u
-        .enter()
-        .append("rect") // Add a new rect for each new elements
-        .merge(u) // get the already existing elements as well
-        .transition() // and apply changes to all of them
-        .duration(1000)
-          .attr("x", function(d) { return x(d.group); })
-          .attr("y", function(d) { return y(d.value); })
-          .attr("width", x.bandwidth())
-          .attr("height", function(d) { return height - y(d.value); })
-          .attr("fill", "steelBlue")
-    
-      // If less group in the new dataset, I delete the ones not in use anymore
-      u
-        .exit()
-        .remove()
+        svg.append('text')
+            .attr('x', (width) / 2)
+            .attr('y', (height) + 50)
+            .attr('text-anchor', 'middle')
+            .attr('font-family', 'sans-serif')
+            .attr('font-style', 'normal')
+            .text('Date')
+
+        // Update the X axis
+        x.domain(data.map(function (d) { return d.group; }))
+        xAxis.call(d3.axisBottom(x))
+
+        // Update the Y axis
+        y.domain([0, d3.max(data, function (d) { return d.value })]);
+        yAxis.transition().duration(1000).call(d3.axisLeft(y));
+
+        // Create the u variable
+        var u = svg.selectAll("rect")
+            .data(data)
+
+        u
+            .enter()
+            .append("rect") // Add a new rect for each new elements
+            .merge(u) // get the already existing elements as well
+            .transition() // and apply changes to all of them
+            .duration(1000)
+            .attr("x", function (d) { return x(d.group); })
+            .attr("y", function (d) { return y(d.value); })
+            .attr("width", x.bandwidth())
+            .attr("height", function (d) { return height - y(d.value); })
+            .attr("fill", "steelBlue")
+
+        // If less group in the new dataset, I delete the ones not in use anymore
+        u
+            .exit()
+            .remove()
     }
-    
+
     // Initialize the plot with the first dataset
-    
-    
-    </script>
+
+
+</script>

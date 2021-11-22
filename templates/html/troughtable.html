@@ -16,6 +16,15 @@ There is a section for each of the HTML canvas widget settings or tabs.
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/js/jquery.tablesorter.min.js" integrity="sha512-qzgd5cYSZcosqpzpn7zF2ZId8f/8CHmFKZ8j7mU4OUXTNRd5g+ZHBPsgKEwoqxCtdQvExE5LprwwPAgoicguNg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/js/jquery.tablesorter.widgets.min.js" integrity="sha512-dj/9K5GRIEZu+Igm9tC16XPOTz0RdPk9FGxfZxShWf65JJNU2TjbElGjuOo3EhwAJRPhJxwEJ5b+/Ouo+VqZdQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<!--
+     This is for local testing. The ubidots.js script simulates the Ubidots() interface available
+     at runtime for the token and date range (and selected device for dynamic dashboards).
+
+     See: https://help.ubidots.com/en/articles/2508317-html-canvas-interacting-with-account-data
+-->
+<script src="ubidots.js"></script>
+
 <!-- End of the external library section. -->
 <style>
 /*** Copy this into the CSS section. ***/
@@ -91,75 +100,84 @@ $(document).ready(() => {
 /*** Copy this into the JavaScript section. NOT THE LINE ABOVE. ***/
     const API_URL = "https://industrial.api.ubidots.com/api/v2.0";
     const PAGE_BASE_URL = new URL(window.location.href).origin;
-    const HEADERS = { "X-Auth-Token": "..." };
+    var headers = {};
+
+    var ubidots = new Ubidots();
 
     var organisation = "centreplus";
     var deviceGroup = "trough";
 
     var devMap = new Map();
 
-    $.ajax({
-        dataType: "json",
-        url: API_URL + "/devices/",
-        data: { "organization__label__iexact": organisation, "deviceGroup__name__iexact": deviceGroup, "fields": "id,description,properties" },
-        headers: HEADERS
-    })
-    .done(function(data) {
-        // Build a list of device IDs to pass to the API call that gets the variables.
-        var devIds = "";
-        var first = true;
-        for (let d of data.results) {
-            devMap.set(d.id, d);
+    ubidots.on('receivedToken', function (data) {
+        headers["X-Auth-Token"] = data;
+        drawChart();
+    });
 
-            if (first !== true) {
-                devIds += ","
-            }
-            first = false;
-            devIds += d.id;
-        }
-
+    function drawChart() {
         $.ajax({
             dataType: "json",
-            url: API_URL + "/variables/",
-            data: { "label": "depth", "device__id__in": devIds, "fields": "device,lastValue,unit" },
-            headers: HEADERS
+            url: API_URL + "/devices/",
+            data: { "organization__label__iexact": organisation, "deviceGroup__name__iexact": deviceGroup, "fields": "id,description,properties" },
+            headers: headers
         })
         .done(function(data) {
+            // Build a list of device IDs to pass to the API call that gets the variables.
+            var devIds = "";
+            var first = true;
             for (let d of data.results) {
-                devMap.get(d.device.id).depth = d;
+                devMap.set(d.id, d);
+
+                if (first !== true) {
+                    devIds += ","
+                }
+                first = false;
+                devIds += d.id;
             }
 
-            var str = "";
-            for (let d of devMap.values()) {
-                //var val = Math.round(d.depth.lastValue.value);
-                var val = d.depth.lastValue.value;
-                var valStyle = "lvlOk";
-                if (d.properties.hasOwnProperty("lowlevel")) {
-                    var lowLevel = d.properties.lowlevel;
-                    if (val < lowLevel) {
-                        valStyle = "lvlLow";
-                    }
+            $.ajax({
+                dataType: "json",
+                url: API_URL + "/variables/",
+                data: { "label": "depth", "device__id__in": devIds, "fields": "device,lastValue,unit" },
+                headers: headers
+            })
+            .done(function(data) {
+                for (let d of data.results) {
+                    devMap.get(d.device.id).depth = d;
                 }
 
-                var devUrl = PAGE_BASE_URL + "/app/devices/" + d.id;
+                var str = "";
+                for (let d of devMap.values()) {
+                    //var val = Math.round(d.depth.lastValue.value);
+                    var val = d.depth.lastValue.value;
+                    var valStyle = "lvlOk";
+                    if (d.properties.hasOwnProperty("lowlevel")) {
+                        var lowLevel = d.properties.lowlevel;
+                        if (val < lowLevel) {
+                            valStyle = "lvlLow";
+                        }
+                    }
 
-                str = `${str}<tr><td><a target="_top" href="${devUrl}">${d.description}</a></td><td class="lvl ${valStyle}">${val}</td><td class="lvl ${valStyle}">${d.depth.unit}</td></tr>\n`;
-            }
+                    var devUrl = PAGE_BASE_URL + "/app/devices/" + d.id;
 
-            $("#ttbody").html(str);
-            
-            $('#spinner').attr('hidden', true);
+                    str = `${str}<tr><td><a target="_top" href="${devUrl}">${d.description}</a></td><td class="lvl ${valStyle}">${val}</td><td class="lvl ${valStyle}">${d.depth.unit}</td></tr>\n`;
+                }
 
-            $('table').tablesorter({
-            sortList: [[1,0]],
-            headers: {2: {sorter: false}},
-			widgets        : [ ], // ['zebra', 'columns'],
-			usNumberFormat : true,
-			sortReset      : false,
-			sortRestart    : false
-		});
+                $("#ttbody").html(str);
+                
+                $('#spinner').attr('hidden', true);
+
+                $('table').tablesorter({
+                    sortList: [[1,0]],
+                    headers: {2: {sorter: false}},
+                    widgets        : [ ], // ['zebra', 'columns'],
+                    usNumberFormat : true,
+                    sortReset      : false,
+                    sortRestart    : false
+                });
+            });
         });
-    });
+    }
 /*** End of the JavaScript section. NOT THE LINE BELOW. ***/
 });
 </script>

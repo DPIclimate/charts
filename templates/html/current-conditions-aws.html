@@ -71,8 +71,14 @@ $(document).ready(() => {
 /*** Copy this into the JavaScript section. NOT THE LINE ABOVE. ***/
     const PAGE_BASE_URL = new URL(window.location.href).origin;
     const API_BASE_URL = "https://industrial.api.ubidots.com/api/v2.0";
-    const HEADERS = { "X-Auth-Token": "..." };
+    var headers = {};
     const DEVICE = "...";
+
+    var ubidots = new Ubidots();
+    ubidots.on('receivedToken', function (data) {
+        headers["X-Auth-Token"] = data;
+        drawChart();
+    });
 
     var displayVars = ["airtemperature", "realfeel", "relativehumidity", "windspeed", "gustspeed", "precipitation", "solar", "strikes", "deltat"];
 
@@ -204,16 +210,18 @@ $(document).ready(() => {
         $('#spinner').attr('hidden', true);
     }
 
-    $.ajax({
-        dataType: "json",
-        url: `${API_BASE_URL}/devices/${DEVICE}/variables`,
-        headers: HEADERS,
-    })
-    .done(function(data) {
-        for (let v of data.results) {
-            varMap.set(v.label, v);
-        }
-    }).done(processVariables);
+    function drawChart() {
+        $.ajax({
+            dataType: "json",
+            url: `${API_BASE_URL}/devices/${DEVICE}/variables`,
+            headers: headers,
+        })
+        .done(function(data) {
+            for (let v of data.results) {
+                varMap.set(v.label, v);
+            }
+        }).done(processVariables);
+    }
 
 /*** End of the JavaScript section. NOT THE LINE BELOW. ***/
 });
