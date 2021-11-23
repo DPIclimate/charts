@@ -16,6 +16,9 @@ ubidots.on('selectedDashboardDateRange', function (data) {
 
 class Ubidots {
     constructor() {
+		var end = Date.now();
+		var start = end - 7 * 24 * 60 * 60 * 1000;
+		var dashboardDateRange = {"start": start, "end": end}
     }
 
     on(type, callback) {
@@ -28,8 +31,8 @@ class Ubidots {
         // a date picker that can update this object's start and end timestamps.
         if (type == 'selectedDashboardDateRange') {
           console.log("Dummy Ubidots object date range.")
-          var start = Date.now();
-          var end = start - 7 * 24 * 60 * 60 * 1000;
+          var end = Date.now();
+          var start = end - 7 * 24 * 60 * 60 * 1000;
           callback({"start": start, "end": end});
         }
     }

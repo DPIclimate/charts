@@ -1,6 +1,9 @@
 <!DOCTYPE HTML>
 <html>
 	<head>
+		<!-- Local Only --!>
+		<script src="ubidots.js"></script>
+		<!-- End of Local Only --!>
 		<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.0/dist/echarts.min.js"></script>
 		<link rel="stylesheet" href="../css/line-soilmoisture-zones.css"></script>
 		<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
@@ -13,69 +16,88 @@
 	</head>
 
 	<body>
-		<div class="daterange" id="daterange">
-			<i class="fa fa-calendar"></i>
-			<span></span>
-			<i class="fa fa-caret-down"></i>
+		<div class="dropdown">
+			<button onclick="showSites()" class="dropbtn">Select Site</button>
+			<div id="dropList" class="dropList">
+				<a onclick="confirmSite('stoneleigh-sm-johnsons-corner')" href="#">Johnsons Corner</a>
+				<a onclick="confirmSite('stoneleigh-sm-east-trellis')" href="#">East Trellis</a>
+				<a onclick="confirmSite('stoneleigh-sm-west-galaxy')" href="#">West Galaxy</a>
+				<a onclick="confirmSite('stoneleigh-sm-kanzi-block')" href="#">Kanzi Block</a>
+			</div>
 		</div>
-		<div id="chart" class="chart">
-		</div>
+		<div id="chart" class="chart"></div>
 		<script type="text/javascript">
+			
+			var ubidots = new Ubidots();
 
 			// Begin setup
 			const READ_ONLY_TOKEN = "BBAU-MRoCiUPLmWFdZj8kvowA6QLepOQN59";
-			const DEVICE_NAME = "stoneleigh-sm-east-trellis";
-			const VARIABLES = ["av-10cm", "av-20cm", "av-30cm",	"av-40cm", 
+
+			const DEVICE_NAMES = ["stoneleigh-sm-johnsons-corner", "stoneleigh-sm-east-trellis", 
+							"stoneleigh-sm-west-galaxy", "stoneleigh-sm-kanzi-block"]
+
+			const AVGS = ["av-10cm", "av-20cm", "av-30cm",	"av-40cm", 
 							"av-50cm", "av-60cm", "av-70cm", "av-80cm"];
 			const STDEVS = ["stdev-10cm", "stdev-20cm", "stdev-30cm", "stdev-40cm",
 						"stdev-50cm", "stdev-60cm", "stdev-70cm", "stdev-80cm"];
+
+			// Formatted trace names
+			const TRACES = ["10cm", "20cm", "30cm", "40cm", "50cm", "60cm", "70cm", "80cm"]
+
+			// Hidden by default
+			const HIDDEN = ["10cm", "20cm", "70cm", "80cm"]
 			// Optional
 			const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
 			const RETURN_TYPE = "json";
+			var date;
+			var site;
 			// End setup
 
-			function initDate() {
-				// Default 7 day view
-				var startDate = moment().subtract(13, 'days');
-				var endDate = moment();
-				$('#daterange span').html(startDate.format('MMMM D, YYYY') + ' - ' + endDate.format('MMMM D, YYYY'));
-				$('#daterange').daterangepicker({
-					ranges: {
-						'Today': [moment(), moment()],
-						'Last 7 Days': [moment().subtract(6, 'days'), moment()],
-						'Last 14 Days': [moment().subtract(13, 'days'), moment()],
-						'Last 30 Days': [moment().subtract(29, 'days'), moment()],
-						'Last Year': [moment().subtract(1, 'year'), moment()]
-					},
-					startDate: startDate,
-					endDate: endDate,
-					locale: {
-						format: "DD/MM/YY hh:mm A"
+
+			ubidots.on('ready', function(){
+				date = JSON.stringify(ubidots.dashboardDateRange)
+			})
+
+			function showSites(){
+				document.getElementById("dropList").classList.toggle("show");
+			}
+
+			window.onclick = function(event){
+				if(!event.target.matches(".dropbtn")) {
+					var dropdowns = document.getElementsByClassName("dropList");
+					for(var i = 0; i < dropdowns.length; i++){
+						if(dropdowns[i].classList.contains("show")){
+							dropdowns[i].classList.remove('show');
+						}
 					}
-				}, function updateChart(start, end, label) {
-					$('#daterange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-					var date = {
-						start: start.valueOf(),
-						end: end.valueOf()
-					};
-					getData(date).then((response) => {
-						renderChart(response);
-					});
+				}
+			}
+
+			function formatName(name){
+				const blkName = name.split("-");
+				var fmtName = blkName[2] + "-" + blkName[3];
+				fmtName = fmtName
+							.replaceAll("-", " ")
+							.split(" ")
+								.map(word => {
+									return word.charAt(0).toUpperCase() + word.slice(1);
+								})
+							.join(" ");
+				return fmtName;
+			}
+
+			function confirmSite(new_site){
+				site = formatName(new_site);
+				getData(new_site, date).then((response) => {
+					renderChart(response);
 				});
-				return {
-					start: startDate.valueOf(),
-					end: endDate.valueOf()
-				};
-			};
+			}
 
-			var date = initDate();
-
-
-			async function getData(date, type) {
+			async function getData(site, date) {
 				try {
-					const avg_urls = VARIABLES.map(function(_, i) {
+					const avg_urls = AVGS.map(function(_, i) {
 						var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
-									DEVICE_NAME + "/" + VARIABLES[i] + "/values/?start=" +
+									site + "/" + AVGS[i] + "/values/?start=" +
 									date.start + "&end=" + date.end +
 									"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
 						return url;
@@ -89,7 +111,7 @@
 					});
 					const stdev_urls = STDEVS.map(function(_, i) {
 						var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
-									DEVICE_NAME + "/" + STDEVS[i] + "/values/?start=" +
+									site + "/" + STDEVS[i] + "/values/?start=" +
 									date.start + "&end=" + date.end +
 									"&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
 						return url;
@@ -112,10 +134,10 @@
 				}
 			}
 
-
 			function renderChart(response){
 				var avgResponse = response.avg
 				var stdevResponse = response.stdev
+
 				var series = avgResponse.map(function(_, i) {
 					var data = avgResponse[i].results.map(function (value, index) {
 						var date = new Date(value.timestamp);
@@ -123,6 +145,7 @@
 					});
 					return data;
 				});
+
 
 				var stdevSeries = stdevResponse.map(function(_, i) {
 					var data = stdevResponse[i].results.map(function (value, index) {
@@ -144,23 +167,42 @@
 					var stdevValues = stdevSeries[i].map((value) => {
 						return value[1];
 					});
-					chartSeries.push({
-						//name: "10 cm",
-						x: ts.reverse(),
-						y: values.reverse(),
-						error_y: {
-							type: 'data',
-							array: stdevValues,
-							opacity: 0.1,
-							width: 0,
-							visible: true
-						},
-						type: 'scatter'
-					});
+					if (HIDDEN.indexOf(TRACES[i]) == -1){
+						chartSeries.push({
+							name: TRACES[i],
+							x: ts.reverse(),
+							y: values.reverse(),
+							error_y: {
+								type: 'data',
+								array: stdevValues,
+								opacity: 0.1,
+								width: 0,
+								visible: true
+							},
+							type: 'scatter'
+						});
+					}
+					else{
+						chartSeries.push({
+							name: TRACES[i],
+							x: ts.reverse(),
+							y: values.reverse(),
+							error_y: {
+								type: 'data',
+								array: stdevValues,
+								opacity: 0.1,
+								width: 0,
+								visible: true
+							},
+							visible: 'legendonly',
+							type: 'scatter'
+						});
+					}
 				};
 
 
 				var layout = {
+					title: site,
     				shapes: [
     					{
         					type: 'rect',
@@ -181,9 +223,15 @@
 
 				Plotly.newPlot('chart', chartSeries, layout);
 			}
-			getData(date).then((response) => {
-				renderChart(response);
+
+			ubidots.on('selectedDashboardDateRange', function (new_date) {
+				date = new_date;
+				site = formatName(DEVICE_NAMES[0]);
+				getData(DEVICE_NAMES[0], date).then((response) => {
+					renderChart(response);
+				});
 			});
+
 		</script>
 	</body>
 </html>
