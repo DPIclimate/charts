@@ -1,0 +1,460 @@
+<!--
+This is a single-file template that can be used to develop and test ubidots HTML canvas widgets.
+
+There is a section for each of the HTML canvas widget settings or tabs.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<script src="ubidots.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!-- Copy these URLs into the external library section. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- End of the external library section. -->
+<style>
+/*** Copy this into the CSS section. ***/
+
+#tbldiv {
+    font-family: Arial, Sans-serif;
+    font-weight: 400;
+    height: 95vh;
+	width: 95vw;
+	top: 0;
+	left: 0;
+    overflow: auto;
+    text-align: center;
+}
+
+table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 20px;
+    border: 1px solid black;
+    border-style: solid;
+    display: inline-block;
+    vertical-align: top;
+}
+
+th, td {
+    line-height: 21px;
+    padding: 5px;
+    padding-left: 16px;
+    padding-right: 16px;
+    font-size:15px;
+    border: 1px solid black;
+    width: 500px;
+}
+
+td {
+    padding-top: 0.5em;
+    line-height: 21px;
+}
+#weatherIcons{
+    text-align: center;
+}
+/*
+ * These classes are named after the return values from deltaTConditions(deltaT)
+ * so must be kept in sync with the function.
+ */
+.Preferred {
+    color: #00876c;
+}
+
+.Marginal {
+    color: #f7ba6e;
+}
+
+.Unsuitable {
+    color: #d43d51;
+}
+
+.Error {
+    color: #949494;
+}
+
+/*** End of the CSS section. ***/
+</style>
+<script>
+$(document).ready(() => {
+/*** Copy this into the JavaScript section. NOT THE LINE ABOVE. ***/
+    const PAGE_BASE_URL = new URL(window.location.href).origin;
+    const API_BASE_URL = "https://industrial.api.ubidots.com/api/v2.0";
+    var headers = {};
+    const ID = "613e9bdbf4c81a040178e28c";
+    const API_LABEL = "00bac91837e6a3de";
+    var start = "1635512400000";
+    var end = "1635598799000";
+    var authToken = "BBAU-VOMMw42nHGcLPKVfBMQxYXDUiL78ln";
+
+    var ubidots = new Ubidots();
+    ubidots.on('receivedToken', function (data) {
+        headers["X-Auth-Token"] = authToken;
+        drawChart();
+    });
+
+    
+    var displayVars = ["airtemperature", "realfeel", "relativehumidity", "windspeed", "gustspeed", "precipitation", "solar", "strikes", "deltat"];
+
+    var varMap = new Map();
+
+    const VARIABLES = ["airtemperature", "precipitation"]; // Variables to request historical data
+
+    const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
+    const RETURN_TYPE = "json";
+
+    function initDate() {
+        // get previous day
+        var startDate = moment().subtract(1, 'days');
+        var endDate = moment();
+        return {
+            start: startDate.valueOf(),
+            end: endDate.valueOf(),
+        };
+    };
+
+    var date = initDate();
+
+    async function getData(date) {
+
+        //Retrieves historial data
+        try {
+            const urls = VARIABLES.map(function(_, i) {
+                var url = "https://industrial.api.ubidots.com/api/v1.6/devices/" +
+                            API_LABEL + "/" + VARIABLES[i] + "/values/?start=" +
+                            date.start + "&end=" + date.end +
+                            "&page_size=" + N_RESULTS_PER_PAGE + "&format=" + RETURN_TYPE;
+                return url;
+            });
+            const request = Array.from(Array(urls.length)).map(async function(_, i) {
+                const req = await fetch(urls[i], {
+                    method: "GET",
+                    headers:{"X-Auth-Token": authToken}
+                });
+                return req.json();
+            });
+
+            const response = await Promise.all(request);
+            return response;
+        } catch (error) {
+            console.log(error);
+        }
+
+    }
+
+    /*
+     * These return values are used as class names so must be kept in sync with the CSS.
+     */
+    function deltaTConditions(deltaT) {
+        if (! $.isNumeric(deltaT) || deltaT < 0) {
+            return "Error";
+        }
+
+        if (deltaT < 2) {
+            return "Marginal";
+        } else if (deltaT < 8) {
+            return "Preferred";
+        } else if (deltaT < 10) {
+            return "Marginal";
+        }
+        return "Unsuitable";
+    }
+
+    function cardinalCompassWindDirection(decimaldegrees) {
+        if (decimaldegrees > 348.75) {
+            decimaldegrees = "N";
+        } else if (decimaldegrees > 326.25) {
+            decimaldegrees = "NNW";
+        } else if (decimaldegrees > 303.75) {
+            decimaldegrees = "NW";
+        } else if (decimaldegrees > 281.25) {
+            decimaldegrees = "WNW";
+        } else if (decimaldegrees > 258.75) {
+            decimaldegrees = "W";
+        } else if (decimaldegrees > 236.25) {
+            decimaldegrees = "WSW";
+        } else if (decimaldegrees > 213.75) {
+            decimaldegrees = "SW";
+        } else if (decimaldegrees > 191.25) {
+            decimaldegrees = "SSW";
+        } else if (decimaldegrees > 168.75) {
+            decimaldegrees = "S";
+        } else if (decimaldegrees > 146.25) {
+            decimaldegrees = "SSE";
+        } else if (decimaldegrees > 123.75) {
+            decimaldegrees = "SE";
+        } else if (decimaldegrees > 101.25) {
+            decimaldegrees = "ESE";
+        } else if (decimaldegrees > 78.75) {
+            decimaldegrees = "E";
+        } else if (decimaldegrees > 56.25) {
+            decimaldegrees = "ENE";
+        } else if (decimaldegrees > 33.75) {
+            decimaldegrees = "NE";
+        } else if (decimaldegrees > 11.25) {
+            decimaldegrees = "NNE";
+        } else {
+            decimaldegrees = "N";
+        }
+        return decimaldegrees;
+    }
+
+    function solarLightLevel(solarRadiation) {
+
+        if (solarRadiation <= 0) {
+            solarRadiation = "No Light";
+        } else if (solarRadiation <= 120) {
+            solarRadiation = "Diffused Light";
+        } else {
+            solarRadiation = "Full Light";
+        }
+        return solarRadiation;
+    }
+
+    function processVariables() {
+        //Displays live weather data
+        console.log("Processing variables.")
+
+        //Dict to keep track of current conditions
+        var conditionsDict = {
+            "rain":false,
+            "wind":false,
+            "strikes":false,
+        }
+
+        for (let dv of displayVars) {
+            var v = varMap.get(dv);
+            if (v == null) {
+                continue;
+            }
+
+            // Construct a URL that will open the variable page. The url field from the variable cannot be used
+            // because that is an API endpoint.
+            var varUrl =  `${PAGE_BASE_URL}/app/devices/${ID}/${v.id}`;
+
+            if (v.name === "airtemperature") {
+                document.getElementById("tempNow").innerHTML = (Math.round((v.lastValue.value)*100)/100) + v.unit;
+
+            }else if (v.name === "precipitation"){
+                if (v.lastValue.value !=0){
+                    conditionsDict['rain'] = true;
+                }
+            }else if (v.name === "realfeel") {
+                document.getElementById('feelsLike').innerHTML = (Math.round((v.lastValue.value)*100)/100) + v.unit;
+            
+            } else if (v.name === "relativehumidity") {
+                document.getElementById('humidityLevel').innerHTML = v.lastValue.value + v.unit;
+                document.getElementById('humIcon').src = "https://sherman-pablo.bnr.la/" + getHumImage(v.lastValue.value);
+            
+            } else if (v.name === "windspeed") {
+                document.getElementById('windSpeed').innerHTML = (Math.round((v.lastValue.value*3.6)*100)/100) + "km/h";
+                document.getElementById('windDirection').innerHTML = cardinalCompassWindDirection(v.lastValue.value);
+
+                if (v.lastValue.value > 35){
+                    conditionsDict['wind'] = true;
+                }
+            } else if (v.name === "gustspeed") {
+                document.getElementById('gustSpeed').innerHTML = (Math.round((v.lastValue.value*3.6)*100)/100) + "km/h";
+                document.getElementById('gustDirection').innerHTML = cardinalCompassWindDirection(v.lastValue.value);
+            
+            } else if (v.name === "strikes") {
+                if (v.lastValue.value != 0){
+                    conditionsDict['srikes'] = true;
+                }
+            
+            } else if (v.name === "deltaT") {
+                // Putting the latest variable value into a local variable makes it easier to test this by hard-coding the value of deltaT.
+                var deltaT = v.lastValue.value;
+                var deltConditions = deltaTConditions(deltaT)
+                
+                if (deltConditions !== "Error") {
+                    document.getElementById('deltaT').innerHTML = `${deltaT} ${v.unit} - ${deltConditions}`
+
+                } else {
+                    document.getElementById('deltaT').innerHTML = deltConditions
+                }
+            }
+        }
+        setConditionsIcon(conditionsDict)
+
+        $('#spinner').attr('hidden', true);
+    }
+    function setConditionsIcon(conditionsDict){
+
+        var icon = document.getElementById('conditionsIcon');
+
+        if (conditionsDict['strikes'] == true){
+            icon.src = "https://sherman-pablo.bnr.la/lightning.png";
+        }
+        else if (conditionsDict['rain'] == true){
+            icon.src = "https://sherman-pablo.bnr.la/rain.png";
+        }
+        else if (conditionsDict['wind'] == true){
+            icon.src = "https://sherman-pablo.bnr.la/wind.png";
+        }
+        else{
+            icon.src = "https://sherman-pablo.bnr.la/sun.png";
+        }
+
+    }
+    function getHumImage(value){
+
+        if (value <= 12.5){
+            return 'hum0.png'
+        }
+        else if (value <= 37.5){
+            return 'hum25.png';
+        }
+        else if (value <=65.5){
+            return 'hum50.png';
+        }
+        else if (value <=87.5){
+            return 'hum75.png';
+        }
+        else if (value <=100){
+            return 'hum100.png';
+        }
+        else{
+            return 'hum0.png'
+        }
+    }
+    getData(date).then((response) => {
+        // Display historical data
+        temps = maxMin(response);
+        rain = calcRain(response);
+        document.getElementById('minTemp').innerHTML = temps.min + "°C";
+        document.getElementById('maxTemp').innerHTML = temps.max + "°C";
+
+    });
+
+    function maxMin(response){
+        // get min and max temperatures
+        var max = -100;
+        var min = 100;
+
+        for (let result of response[0]['results']){
+            var temp = result['value'];
+
+            if (temp > max){
+                max = temp;
+            }
+            if (temp < min){
+                min = temp;
+            }
+        }
+        return {
+            max: max,
+            min: min
+        };
+    }
+
+    function calcRain(response){
+        var rain = 0;
+        for (let result of response[1]['results']){
+            rain += result['value'];
+        }
+        document.getElementById('precipitationLevel').innerHTML = rain.toFixed(2) + "mm";
+
+        precipIcon = document.getElementById('precipIcon');
+        if (rain == 0){
+            precipIcon.src = "https://sherman-pablo.bnr.la/precip1.png";
+        }
+        else if (rain <= 6.35){
+            precipIcon.src = "https://sherman-pablo.bnr.la/precip2.png";
+        }
+        else if (rain <=19.05){
+            precipIcon.src = "https://sherman-pablo.bnr.la/precip3.png";
+        }
+        else{
+            precipIcon.src = "https://sherman-pablo.bnr.la/precip4.png";
+        }
+    }
+
+    function drawChart() {
+        $.ajax({
+            dataType: "json",
+            url: `${API_BASE_URL}/devices/${ID}/variables`,
+            headers: headers,
+        })
+        .done(function(data) {
+            for (let v of data.results) {
+                varMap.set(v.label, v);
+            }
+        }).done(processVariables);
+    }
+
+/*** End of the JavaScript section. NOT THE LINE BELOW. ***/
+});
+</script>
+</head>
+<body>
+<!-- Copy this into the HTML section. -->
+<div id="tbldiv">
+<h1 id="spinner" style="position: absolute; left: 50%; top: 50%; text-align: center;"><i class="fa fa-spinner fa-pulse"></i></h1>
+<table id="temp">
+
+    <tr>
+        <th colspan="2">Temperature</th>
+    </tr>
+    <tr>
+        <td id="weatherIcons" colspan="2"><img alt="weather conditions icon" id="conditionsIcon" height="100px" width="100px" src="https://sherman-pablo.bnr.la/sun.png"/></td>
+    </tr>
+    <tr>
+        <td>Now</td>
+        <td id="tempNow">-</td>
+    </tr>
+    <tr>
+        <td>Min (Previous 24h)</td>
+        <td id="minTemp">-</td>
+    </tr>
+    <tr>
+        <td>Max (Previous 24h)</td>
+        <td id="maxTemp">-</td>
+    </tr>
+    <tr>
+        <td>Feels Like</td>
+        <td id="feelsLike">-</td>
+    </tr>
+    <tr>
+        <td>DeltaT</td>
+        <td id="deltaT">-</td>
+    </tr>
+
+</table>
+<table id="precip_humid">
+    <tr>
+        <th>Precipitation (Previous 24h)</th>
+        <th>Humidity</th>
+    </tr>
+    <tr>
+        
+        <td id="weatherIcons"><img id="precipIcon" alt="precipitation icon" height="50px" src="https://sherman-pablo.bnr.la/precip1.png"/></td>
+        <td id="weatherIcons"><img id="humIcon" alt="humidity icon" height="50px" src="https://sherman-pablo.bnr.la/hum0.png"/></td>
+    </tr>
+    <tr>
+        
+        <td id="precipitationLevel">-</td>
+        <td id="humidityLevel">-</td>
+    </tr>
+</table>
+<table id="wind">
+    <tr>
+        <th colspan="3">Wind Speeds</th>
+    </tr>
+    <tr>
+        <td>Wind Speed</td>
+        <td id="windSpeed">-</td>
+        <td id="windDirection">-</td>
+    </tr>
+    <tr>
+        <td>Gust Speed</td>
+        <td id="gustSpeed">-</td>
+        <td id="gustDirection">-</td>
+    </tr>
+</table>
+</div>
+<!-- End of the HTML section. -->
+</body>
+</html>
