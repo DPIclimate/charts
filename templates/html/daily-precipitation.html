@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!--
+     This is for local testing. The ubidots.js script simulates the Ubidots() interface available
+     at runtime for the token and date range (and selected device for dynamic dashboards).
+
+     See: https://help.ubidots.com/en/articles/2508317-html-canvas-interacting-with-account-data
+    -->
+<script src="ubidots.js"></script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+
+<!-- CSS Start -->
+<style>
+#totalPrecipContainer {
+    height: 2px;
+}
+</style>
+<!-- CSS End   -->
+
+<div class="allHTML" style="text-align: center;">
+	<div id="totalPrecipContainer" style="padding-bottom: 30px;">
+		<p id="totalPrecip" style="font-family: sans-serif; display: inline-block;"></p>
+	</div>
+	<!-- Create a div where the graph will take place -->
+	<div class='chartClass'>
+		<canvas id="barChart" style="width:100%;max-width:700px;display:inline-block"></canvas>
+	</div>
+</div>
+
+<!-- HighCharts script -->
+<script>
+// Global variables
+var headers = {};
+const DEVICE_NAME = "..."; // API Label of Device
+const normalPrecipVar = "precipitation";
+const hourlyPrecipVar = "hourly_precip_total";
+const dailyPrecipVar = "daily_precip_total";
+const monthlyPrecipVar = "monthly_precip_total";
+
+var ubidots = new Ubidots();
+var date = null;
+var oldDr = null;
+var Precipitation = [];
+var precipTotal = 0;
+
+var ready = false;
+var gotToken = false;
+var gotDate = false;
+var myChart;
+var doItBusy = false;
+
+ubidots.on('ready', function () {
+	ready = true;
+	headers["X-Auth-Token"] = ubidots.token;
+	date = ubidots.dashboardDateRange;
+    oldDr = date;
+	console.log("rainfall ready");
+	doIt();
+});
+
+ubidots.on('selectedDashboardDateRange', function (data) {
+	if ( ! ready) {
+		console.log("rainfall selectedDashboardDateRange: not ready.");
+		return;
+	}
+
+    // More filtering of spam date range changes.
+    if (oldDr == null || oldDr.start != data.start || oldDr.end != data.end) {
+        console.log(`rainfall date change, was ${JSON.stringify(oldDr)}, now ${JSON.stringify(data)}`);
+        date = data;
+        oldDr = data;
+        console.log("rainfall ubidots daterange callback calling doIt()");
+        doIt();
+    } else {
+        console.log("rainfall daterange callback got same date range again.");
+    }
+});
+
+function doIt() {
+    if (! ready) {
+        console.log('Waiting on Ubidots info.');
+        return;
+    }
+
+    doItBusy = true;
+    var timeDiff = (date.end - date.start) / 1000;
+
+    var selectedRangeVar = "precipitation"; // Use 15 min interval for default.
+    var dateFormat = "HH:mm:ss DD/MM/YYYY"; // https://momentjscom.readthedocs.io/en/latest/moment/04-displaying/01-format/
+
+    if (timeDiff < (21600 + 1)) { // Less than 1 day selected
+        selectedRangeVar = normalPrecipVar;
+        dateFormat = "HH:mm:ss";
+    } else if (timeDiff > (21600 + 1) && timeDiff < (86400) + 1) { // Less than 1 day more than 1/4 day (6hrs).
+        // Use Hourly avg
+        selectedRangeVar = hourlyPrecipVar;
+        dateFormat = "HH:mm";
+    } else if (timeDiff > (86400 * 2) + 1) { // More than 1 day selected
+        // Use daily avg
+        selectedRangeVar = dailyPrecipVar;
+        dateFormat = "DD/MM/YYYY";
+    } else if (timeDiff > (86400 * 30) + 1) { // More than 1 month selected
+        // Use monthly avg
+        selectedRangeVar = monthlyPrecipVar;
+        dateFormat = "MMM YY";
+    }
+
+    getPrecip(date, selectedRangeVar, dateFormat);
+
+}
+
+// To be the only API call
+function getPrecip(date, precipitationVar, dateFormat) {
+    Precipitation = [];
+    precipTotal = 0;
+    var precipitationURL = "https://industrial.api.ubidots.com.au/api/v1.6/devices/" + DEVICE_NAME + "/" + precipitationVar + "/values/?start=" + date.start + "&end=" + date.end + "&page_size=10000&format=json";
+    $.ajax({
+        dataType: "json",
+        url: precipitationURL,
+        headers: headers,
+    })
+        .done(function (data) {
+            Precipitation = [];
+            for (let v of data.results) {
+                var date = new Date(v.timestamp)
+                var dateString = moment(new Date(v.timestamp)).format(dateFormat);
+                Precipitation.push({ date: dateString, value: v.value });
+                precipTotal += v.value;
+            }
+        }).done(processPrecip);
+}
+
+function processPrecip() {
+    Precipitation = Precipitation.reverse();
+    //console.log(Precipitation);
+    PrecipitationTimes = [];
+    PrecipitationValues = [];
+    for (let pV of Precipitation) {
+        PrecipitationTimes.push(pV.date);
+        PrecipitationValues.push(pV.value);
+    }
+    //console.log(PrecipitationTimes);
+    //console.log(PrecipitationValues);
+    renderChart(PrecipitationTimes, PrecipitationValues);
+    setPrecipTotal(precipTotal);
+    doItBusy = false;
+}
+
+function setPrecipTotal(totalPrecip) {
+    if (totalPrecip != null) {
+        totalPrecip = Math.round(totalPrecip * 100) / 100;
+        document.getElementById("totalPrecip").innerHTML = "Total: " + totalPrecip + " mm";
+    } else {
+        document.getElementById("totalPrecip").innerHTML = "";
+    }
+}
+
+function renderChart(PrecipTimes, PrecipValues) {
+    var xValues = ["Italy", "France", "Spain", "USA", "Argentina"];
+    var yValues = [55, 49, 44, 24, 15];
+    var barColors = [];
+
+    PrecipTimes.forEach(function (time, index) {
+        barColors.push("rgb(70, 130, 180)");
+    });
+
+    if (myChart) {
+        myChart.destroy();
+    }
+
+    myChart = new Chart("barChart", {
+        type: "bar",
+        data: {
+            labels: PrecipTimes,
+            datasets: [{
+                backgroundColor: barColors,
+                data: PrecipValues
+            }]
+        },
+        options: {
+            animation: false,
+            responsive: true,
+            tooltips: {
+                mode: 'index',
+                intersect: false,
+            },
+            legend: {
+                display: false,
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            scales: {
+                xAxes: [{
+                    display: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Date'
+                    }
+                }],
+                yAxes: [{
+                    display: true,
+                    ticks: {
+                        min: 0, // minimum value
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: "" //fieldLabel
+                    }
+                }]
+            }
+        }
+    });
+}
+</script>
+<!-- End High Charts script -->
