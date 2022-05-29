@@ -118,19 +118,19 @@ var errorsRemoved = false;
 var loggingEnabled = false;
 
 ubidots.on('ready', function () {
-	ready = true;
-	headers["X-Auth-Token"] = ubidots.token;
-	newDr = ubidots.dashboardDateRange;
+    ready = true;
+    headers["X-Auth-Token"] = ubidots.token;
+    newDr = ubidots.dashboardDateRange;
     oldDr = newDr;
-	log("ready");
-	doIt();
+    log("ready");
+    doIt();
 });
 
 ubidots.on('selectedDashboardDateRange', function (data) {
-	if ( ! ready) {
-		log("selectedDashboardDateRange: not ready.");
-		return;
-	}
+    if ( ! ready) {
+        log("selectedDashboardDateRange: not ready.");
+        return;
+    }
 
     // Try to filter out spam date range change events.
     //var nowMs = Date.now();
@@ -189,6 +189,9 @@ async function getData(dateRange, VARIABLES) {
 
 function displayChart(timeseries) {
     Highcharts.chart('container', {
+        chart: {
+            animation: false
+        },
         title: {
             text: ''
         },
@@ -206,7 +209,10 @@ function displayChart(timeseries) {
 
         plotOptions: {
             series: {
-                connectNulls: true
+                connectNulls: true,
+                animation: {
+                    duration: 0
+                }
             }
         },
         series: [{
