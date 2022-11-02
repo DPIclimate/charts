@@ -1,0 +1,538 @@
+<html>
+    <head>
+        <!-- Local Only -->
+        <script src="ubidots.js"></script>
+        <!-- End of Local Only -->
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.0/dist/echarts.min.js"></script>
+        <link rel="stylesheet" href="../css/line-soilmoisture-zones.css"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+        <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link href="https://iot.cdnedge.bluemix.net/iau/static/font-awesome/css/all.css" rel="stylesheet" type="text/css">
+    </head>
+    <body>
+        <div class="dropdown">
+            <button onclick="showSites()" class="dropbtn">Select Site</button>
+            <div id="siteDropList" class="dropList"></div>
+        </div>
+        <div class="dropdown">
+            <button onclick="showDepths()" class="dropbtn">Select Depth</button>
+            <div id="depthDropList" class="dropList">
+                <a onclick="confirmDepth('10cm')" href="#">10cm</a>
+                <a onclick="confirmDepth('20cm')" href="#">20cm</a>
+                <a onclick="confirmDepth('30cm')" href="#">30cm</a>
+                <a onclick="confirmDepth('40cm')" href="#">40cm</a>
+            </div>
+        </div>
+        <h3 id="selectedSite"></h3>
+        <h3 id="selectedDepth"></h3>
+        <div id="avgsChart" class="chart" style="max-height: 600px;"></div>
+        <div class="dropdown">
+            <button onclick="showDevices()" class="dropbtn">Select Device</button>
+            <div id="deviceDropList" class="dropList" style="max-height:100px;overflow:auto;"></div>
+        </div>
+    <script type="text/javascript">
+        var devices = [ // Maybe add name to devices for Ubidots reference/link.
+            { // Average Soil Moisture Devices
+                "name": "Cow Paddock Inter-row S1",
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Average",
+                "apiLabel": "sm-cow-paddock-s1"
+            },
+            {
+                "name": "Cow Paddock Ripped-row S2",
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Average",
+                "apiLabel": "sm-cow-paddock-s2"
+            },
+            {
+                "name": "Cow Paddock Control S3",
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Control",
+                "type": "Average",
+                "apiLabel": "sm-cow-paddock-cntrl"
+            },
+            {
+                "name": "House Paddock Inter-row S1",
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Average",
+                "apiLabel": "sm-house-paddock-s1"
+            },
+            {
+                "name": "House Paddock Ripped-row S2",
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Average",
+                "apiLabel": "sm-house-paddock-s2"
+            },
+            {
+                "name": "House Paddock Control S3",
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Control",
+                "type": "Average",
+                "apiLabel": "sm-house-paddock-cntrl"
+            },
+            {
+                "name": "Fairy Waterhole Bank S1",
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Bank",
+                "type": "Average",
+                "apiLabel": "sm-fairy-waterhole-s1"
+            },
+            {
+                "name": "Fairy Waterhole Mid-pond S2",
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Mid-Pond",
+                "type": "Average",
+                "apiLabel": "sm-fairy-waterhole-s2"
+            },
+            {
+                "name": "Fairy Waterhole Control S3",
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Control",
+                "type": "Average",
+                "apiLabel": "sm-fairy-waterhole-cntrl"
+            },
+            { // Raw Soil Moisture Devices - House Paddock
+                "name": "House Paddock Rip 1", // s1
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Raw",
+                "apiLabel": "4b50d030-edb4-4de6-a569-6fed74c5e1df"
+            },
+            {
+                "name": "House Paddock Rip 2", // s1
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Raw",
+                "apiLabel": "8cc66e32-d07d-44b5-b6ea-72112d1c8599"
+            },
+            {
+                "name": "House Paddock Rip 3", // s1
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Raw",
+                "apiLabel": "e56519a5-1dcc-4106-8a47-3c83b3b20a8e"
+            },
+            {
+                "name": "House Paddock Rip 1", // s2
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Raw",
+                "apiLabel": "4b50d030-edb4-4de6-a569-6fed74c5e1df"
+            },
+            {
+                "name": "House Paddock Rip 2", // s2
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Raw",
+                "apiLabel": "8cc66e32-d07d-44b5-b6ea-72112d1c8599"
+            },
+            {
+                "name": "House Paddock Rip 3", // s2
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Raw",
+                "apiLabel": "e56519a5-1dcc-4106-8a47-3c83b3b20a8e"
+            },
+            {
+                "name": "House Paddock Rip 1", // cntrl s1
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Control",
+                "type": "Raw",
+                "apiLabel": "d8214fa6-f151-49da-ac15-aab181de3e13"
+            },
+            {
+                "name": "House Paddock Rip 2", // cntrl s2
+                "site": "House Paddock",
+                "treatment": "Ripping",
+                "location": "Control",
+                "type": "Raw",
+                "apiLabel": "1849c515-f8ce-4ac6-9eb8-66aeec096284"
+            },
+            {  // Raw Soil Moisture Devices - Cow Paddock
+                "name": "Cow Paddock Rip 1", // s1
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Raw",
+                "apiLabel": "5eaa3ac8-e3c8-4a59-ab8f-9e4e879cf33b"
+            },
+            {
+                "name": "Cow Paddock Rip 2", // s1
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Raw",
+                "apiLabel": "cfea6956-c345-4386-91f7-5aa7b9c9badf"
+            },
+            {
+                "name": "Cow Paddock Rip 3", // s1
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Inter-row",
+                "type": "Raw",
+                "apiLabel": "04c24416-b55d-464c-9efd-6155b57d68cf"
+            },
+            {
+                "name": "Cow Paddock Rip 1", // s2
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Raw",
+                "apiLabel": "453dbbf5-71e9-427e-973e-77186c787c21"
+            },
+            {
+                "name": "Cow Paddock Rip 2", // s2
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Raw",
+                "apiLabel": "88132bc5-cbc0-4cbd-a236-193351c611fa"
+            },
+            {
+                "name": "Cow Paddock Rip 3", // s2
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Ripped-row",
+                "type": "Raw",
+                "apiLabel": "6927cf8f-ef1b-41d6-8cf4-3ec1aa087fe7"
+            },
+            {
+                "name": "Cow Paddock Rip 1", // cntrl s1
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Control",
+                "type": "Raw",
+                "apiLabel": "82269d7b-5e00-46e2-b772-63f21bb07bf6"
+            },
+            {
+                "name": "Cow Paddock Rip 1", // cntrl s2
+                "site": "Cow Paddock",
+                "treatment": "Ripping",
+                "location": "Control",
+                "type": "Raw",
+                "apiLabel": "fa627860-18df-4a6a-9ed3-98b23ad0325c"
+            },
+            {  // Raw Soil Moisture Devices - Fairy Waterhole
+                "name": "Fairy Waterhole Pond 1", // s1
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Bank",
+                "type": "Raw",
+                "apiLabel": "e4c08473-d1c5-49f3-a6c0-156dce976bc7"
+            },
+            {
+                "name": "Fairy Waterhole Pond 2", // s1
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Bank",
+                "type": "Raw",
+                "apiLabel": "8c89fa4c-5e66-4bf8-b75c-f8bdf0d5cd80"
+            },
+            {
+                "name": "Fairy Waterhole Pond 3", // s1
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Bank",
+                "type": "Raw",
+                "apiLabel": "3c38e3af-9dd2-4850-9f4e-9574f9b2fe2f"
+            },
+            {
+                "name": "Fairy Waterhole Pond 1", // s2
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Mid-pond",
+                "type": "Raw",
+                "apiLabel": "c5482b30-114b-4285-a8df-6f38315fa4ea"
+            },
+            {
+                "name": "Fairy Waterhole Pond 2", // s2
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Mid-pond",
+                "type": "Raw",
+                "apiLabel": "18434a47-17f4-4ecd-9d96-2da362e6a040"
+            },
+            {
+                "name": "Fairy Waterhole Pond 3", // s2
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Mid-pond",
+                "type": "Raw",
+                "apiLabel": "503041f6-83bc-4c63-b317-ce9d2803e27d"
+            },
+            {
+                "name": "Fairy Waterhole Pond 1", // cntrl s1
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Control",
+                "type": "Raw",
+                "apiLabel": "b071fce5-bd6b-4885-94a1-bdbf44290a5d"
+            },
+            {
+                "name": "Fairy Waterhole Pond 2", // cntrl s2
+                "site": "Fairy Waterhole",
+                "treatment": "Ponding",
+                "location": "Control",
+                "type": "Raw",
+                "apiLabel": "a04a4c6f-f74d-47a1-bd5f-370b7a6a08f3"
+            }];
+
+        // Get unique array of all site names from devices object
+        var sites = [...new Set(devices.map(a => a.site))];
+        // Get apiLabels for each site where the type is average.
+        var siteAvgApiLabels = [];
+        for (var i = 0; i < sites.length; i++) {
+            var site = sites[i];
+            var apiLabelsForSite = devices.filter(function(device) {
+                return device.site == site && device.type == "Average";
+            });
+            siteAvgApiLabels.push([...new Set(apiLabelsForSite.map(a => a.apiLabel))]);
+        }
+
+        // Get locations for each site where the type is average.
+        var siteAvgLocations = [];
+        for (var i = 0; i < sites.length; i++) {
+            var site = sites[i];
+            var locationsForSite = devices.filter(function(device) {
+                return device.site == site && device.type == "Average";
+            });
+            siteAvgLocations.push([...new Set(locationsForSite.map(a => a.location))]);
+        }
+
+        // Create dropdown menu of sites
+        var siteDropList = document.getElementById("siteDropList");
+        for (var i = 0; i < sites.length; i++) {
+            var site = sites[i];
+            var a = document.createElement("a");
+            a.setAttribute("onclick", "confirmSite('" + site + "')");
+            a.innerHTML = site;
+            siteDropList.appendChild(a);
+        }
+
+        // Get devices for each site where the type is raw.
+        var rawDataDevices = devices.filter(function(device) {
+            return device.type == "Raw";
+        });
+        
+        var rawDataDeviceNames = [];
+        for (var i = 0; i < rawDataDevices.length; i++) {
+            var device = rawDataDevices[i];
+            rawDataDeviceNames.push(device.name + " " + device.location);
+        }
+
+        // Create dropdown menu of raw data devices.
+        var deviceDropList = document.getElementById("deviceDropList");
+        for (var i = 0; i < rawDataDeviceNames.length; i++) {
+            var device = rawDataDeviceNames[i];
+            var a = document.createElement("a");
+            a.setAttribute("onclick", "confirmDevice('" + device + "')");
+            a.innerHTML = device;
+            deviceDropList.appendChild(a);
+        }
+
+        console.log(rawDataDeviceNames);
+
+        var ubidots = new Ubidots();
+        // Begin setup
+        const READ_ONLY_TOKEN = "BBAU-VOMMw42nHGcLPKVfBMQxYXDUiL78ln";
+        // Formatted trace names
+        const TRACES = ["10cm", "20cm", "30cm", "40cm"];
+        // Optional
+        const N_RESULTS_PER_PAGE = 10000; // Easier to work with a single page
+        const RETURN_TYPE = "json";
+        var date;
+        var site;
+        // Set the default site and depth selected. Display values in HTML.
+        var siteSelected = sites[0];
+        var depthSelected = TRACES[0];
+        document.getElementById("selectedSite").innerHTML = "Site Selected: " + siteSelected;
+        document.getElementById("selectedDepth").innerHTML = "Depth Selected: " + depthSelected;
+        // End setup
+        ubidots.on('ready', function(){
+            date = JSON.stringify(ubidots.dashboardDateRange)
+        })
+        function showSites(){
+            document.getElementById("siteDropList").classList.toggle("show");
+        }
+        function showDepths(){
+            document.getElementById("depthDropList").classList.toggle("show");
+        }
+        function showDevices(){
+            document.getElementById("deviceDropList").classList.toggle("show");
+        }
+        window.onclick = function(event){
+            if(!event.target.matches(".dropbtn")) {
+                var dropdowns = document.getElementsByClassName("dropList");
+                for(var i = 0; i < dropdowns.length; i++){
+                    if(dropdowns[i].classList.contains("show")){
+                        dropdowns[i].classList.remove('show');
+                    }
+                }
+            }
+        }
+        function formatName(name){
+            const blkName = name.split("-");
+            var fmtName = blkName[2] + "-" + blkName[3];
+            fmtName = fmtName
+                        .replaceAll("-", " ")
+                        .split(" ")
+                            .map(word => {
+                                return word.charAt(0).toUpperCase() + word.slice(1);
+                            })
+                        .join(" ");
+            return fmtName;
+        }
+        function confirmSite(new_site){
+            //site = formatName(new_site);
+            //getData(new_site, date).then((response) => {
+            //    renderChart(response);
+            //});
+            document.getElementById("selectedSite").innerHTML = "Selected Site: " + new_site;
+            siteSelected = new_site;
+            // Update chart with new site and selected depth.
+            getData(siteSelected, depthSelected, date).then((response) => {
+                renderChart(response);
+            });
+        }
+        function confirmDepth(new_depth){
+            document.getElementById("selectedDepth").innerHTML = "Selected Depth: " + new_depth;
+            depthSelected = new_depth;
+            // Update chart with new depth and selected site.
+            getData(siteSelected, depthSelected, date).then((response) => {
+                renderChart(response);
+            });
+        }
+        function confirmDevice(device){
+            console.log(device);
+        }
+        async function getData(site, depth, date){
+            try{
+                let siteIndex = sites.indexOf(site);
+                // Use site index to get API labels for selected site.
+                let apiLabels = siteAvgApiLabels[siteIndex];
+                // Create urls for each sites apiLabel and selected depth.
+                const avg_urls = apiLabels.map(function(_, i) {
+                    var url = "https://industrial.api.ubidots.com.au/api/v1.6/devices/" + 
+                    apiLabels[i] + "/av-" + depthSelected + "/values/?start=" + date.start + "&end=" + date.end + "&page_size=" + N_RESULTS_PER_PAGE + "&return_type=" + RETURN_TYPE;
+                    return url;
+                });
+                // Create requests for each url.
+                const avg_request = Array.from(Array(avg_urls.length)).map(async function(_, i) {
+                    const req = await fetch(avg_urls[i], {
+                        method: "GET",
+                        headers: {"X-Auth-Token": READ_ONLY_TOKEN}
+                    });
+                    return req.json();
+                });
+                // Create urls for each sites apiLabel and selected depth, retrieving standard deviation values.
+                const stdev_urls = apiLabels.map(function(_, i) {
+                    var url = "https://industrial.api.ubidots.com.au/api/v1.6/devices/" + 
+                        apiLabels[i] + "/stdev-" + depthSelected + "/values/?start=" + 
+                        date.start + "&end=" + date.end + 
+                        "&page_size=" + N_RESULTS_PER_PAGE + "&return_type=" + RETURN_TYPE;
+                    return url;
+                });
+                // Create requests for each standard deviation url.
+                const stdev_request = Array.from(Array(stdev_urls.length)).map(async function(_, i) {
+                    const req = await fetch(stdev_urls[i], {
+                        method: "GET",
+                        headers: {"X-Auth-Token": READ_ONLY_TOKEN}
+                    });
+                    return req.json();
+                });
+                const avgs = await Promise.all(avg_request);
+                const stdevs = await Promise.all(stdev_request);
+                return {
+                    avg: avgs,
+                    stdev: stdevs
+                }
+            } catch (error) {
+                console.log("There was a fatal error", error);
+            }
+        }
+        function renderChart(response){
+            // Get the data from the responses.
+            avgResponse = response.avg;
+            stdevResponse = response.stdev;
+            // Use the site index to get the location variables for naming each trace
+            let traceNames = siteAvgLocations[sites.indexOf(siteSelected)];
+            var avgSeries = avgResponse.map(function(_, i) {
+                var data = avgResponse[i].results.map(function(value, index) {
+                    var date = new Date(value.timestamp);
+                    return [date, value.value];
+                });
+                return data;
+            });
+            var stdevSeries = stdevResponse.map(function(_, i) {
+                var data = stdevResponse[i].results.map(function(value, index) {
+                    var date = new Date(value.timestamp);
+                    return [date, value.value];
+                });
+                return data;
+            });
+            var chartSeries = [];
+            for (let i in avgSeries){
+                var ts = avgSeries[i].map((value) => {
+                    return value[0];
+                });
+                var values = avgSeries[i].map((value) => {
+                    return value[1];
+                });
+                var stdevValues = stdevSeries[i].map((value) => {
+                    return value[1];
+                });
+                chartSeries.push({
+                    name: traceNames[i],
+                    x: ts.reverse(),
+                    y: values.reverse(),
+                    error_y: {
+                        type: "data",
+                        array: stdevValues,
+                        opacity: 0.5,
+                        width: 0,
+                        visible: true
+                    },
+                    type: 'scatter'
+                });
+            };
+        var layout = {
+            yaxis: {
+                range: [0, 50],
+            }
+        }
+            Plotly.newPlot('avgsChart', chartSeries, layout);
+        }
+
+        ubidots.on('selectedDashboardDateRange', function (new_date) {
+            date = new_date;
+            getData(siteSelected, depthSelected, date).then((response) => {
+                renderChart(response);
+            });
+        });
+    </script>
+    </body>
+</html>

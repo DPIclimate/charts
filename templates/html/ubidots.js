@@ -15,12 +15,12 @@ ubidots.on('selectedDashboardDateRange', function (data) {
 */
 
 class Ubidots {
-  token = "BBAU-...";
+  token = "BBAU-VOMMw42nHGcLPKVfBMQxYXDUiL78ln";
   dashboardDateRange;
 
   constructor() {
     var end = Date.now();
-    var start = end - 7 * 24 * 60 * 60 * 1000;
+    var start = end - 28 * 24 * 60 * 60 * 1000;
     this.dashboardDateRange = { "start": start, "end": end }
   }
 
